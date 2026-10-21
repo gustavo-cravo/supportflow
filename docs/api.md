@@ -1,6 +1,27 @@
 # SupportFlow — API REST (etapa 2)
 
-API local sem autenticação, construída sobre os sete Models da etapa 1. Não há frontend novo, integração WhatsApp, notificações externas ou exclusões permanentes.
+> Evolução na etapa 3: adicionado `GET /api/dashboard/summary` para o frontend Vue, sem mudança nas regras existentes. Consulte o contrato abaixo e as instruções em [frontend.md](frontend.md).
+
+## Resumo do dashboard — etapa 3
+
+`GET /api/dashboard/summary` retorna HTTP 200 com `data` contendo:
+
+- `counts`: `open`, `in_progress`, `waiting`, `overdue_tasks` e `today_reminders`, com contagens completas, inclusive quando as listas resumidas ultrapassam cinco registros.
+- `recent_tickets`: até cinco atendimentos recentes por ID decrescente, com sistema, contato e cliente, incluindo históricos de sistemas inativos.
+- `overdue_tasks`: até cinco pendências `pending` com `due_at < agora`, ordenadas por prazo/ID, com atendimento associado quando existente.
+- `today_reminders`: até cinco lembretes não concluídos do dia local, ordenados por previsão/ID.
+- `overdue_reminders`: até cinco lembretes não concluídos com previsão anterior a agora, ordenados por previsão/ID.
+- `upcoming_reminders`: até cinco lembretes não concluídos a partir de amanhã, ordenados por previsão/ID.
+
+As listas usam os mesmos API Resources dos endpoints existentes, sem `links`/`meta` por serem resumos limitados. As datas usam `America/Sao_Paulo`. Lembretes vencidos hoje podem aparecer tanto na seção de hoje quanto na de atrasados, conforme a regra já existente. O endpoint é somente de leitura, sem filtros ou paginação; utilize as listagens originais para consultar todos os registros.
+
+Exemplo com banco sem registros:
+
+```json
+{"data":{"counts":{"open":0,"in_progress":0,"waiting":0,"overdue_tasks":0,"today_reminders":0},"recent_tickets":[],"overdue_tasks":[],"today_reminders":[],"overdue_reminders":[],"upcoming_reminders":[]}}
+```
+
+API local sem autenticação, construída sobre os sete Models da etapa 1. Não há integração WhatsApp, notificações externas ou exclusões permanentes.
 
 ## Execução e convenções
 

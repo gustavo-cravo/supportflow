@@ -2,12 +2,15 @@
 
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CustomerController;
+use App\Http\Controllers\Api\DashboardController;
 use App\Http\Controllers\Api\KnowledgeArticleController;
 use App\Http\Controllers\Api\PendingTaskController;
 use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\SupportTicketController;
 use App\Http\Controllers\Api\SystemController;
 use Illuminate\Support\Facades\Route;
+
+Route::get('dashboard/summary', [DashboardController::class, 'summary'])->name('dashboard.summary');
 
 Route::apiResource('systems', SystemController::class)->except('destroy');
 Route::apiResource('contacts', ContactController::class)->except('destroy');
