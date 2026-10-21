@@ -12,6 +12,20 @@ permissions:
 jobs:
   ci:
     runs-on: ubuntu-latest
+    env:
+      # These apply to Composer/Artisan too, before PHPUnit loads its bootstrap.
+      APP_ENV: testing
+      APP_KEY: base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+      APP_CONFIG_CACHE: bootstrap/cache/config-ci.php
+      APP_ROUTES_CACHE: bootstrap/cache/routes-ci.php
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      DB_URL: ''
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+      MAIL_MAILER: array
+      BROADCAST_CONNECTION: 'null'
 
     steps:
       - name: Checkout code
@@ -23,6 +37,7 @@ jobs:
         uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
         with:
           php-version: '8.5'
+          extensions: pdo_sqlite, sqlite3
           tools: composer:v2
           coverage: none
 
@@ -30,9 +45,38 @@ jobs:
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            frontend/package-lock.json
 
-      - name: Setup Application
-        run: composer setup
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Install starter dependencies
+        run: npm ci
+
+      - name: Install SupportFlow frontend dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Validate migrations on isolated SQLite
+        run: php artisan migrate --force --no-interaction
+
+      - name: Build starter assets
+        run: npm run build
+
+      - name: Build SupportFlow frontend
+        working-directory: frontend
+        run: npm run build
 
       - name: Run CI Checks
         run: composer ci:check
+
+      - name: Test SupportFlow frontend
+        working-directory: frontend
+        run: npm run test:unit -- --run
+
+      - name: Check SupportFlow frontend formatting
+        working-directory: frontend
+        run: npm exec prettier -- --check src/ vite.config.js vite.qa.config.js vitest.config.js index.html

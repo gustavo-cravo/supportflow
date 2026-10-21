@@ -69,6 +69,8 @@ export default defineConfig({
         ignorePatterns: [
             '.github/**',
             'composer.json',
+            // The standalone frontend has its own Prettier configuration/check.
+            'frontend/**',
             'resources/js/components/ui/*',
             'resources/views/mail/*',
         ],
