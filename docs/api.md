@@ -18,7 +18,22 @@ As listas usam os mesmos API Resources dos endpoints existentes, sem `links`/`me
 Exemplo com banco sem registros:
 
 ```json
-{"data":{"counts":{"open":0,"in_progress":0,"waiting":0,"overdue_tasks":0,"today_reminders":0},"recent_tickets":[],"overdue_tasks":[],"today_reminders":[],"overdue_reminders":[],"upcoming_reminders":[]}}
+{
+    "data": {
+        "counts": {
+            "open": 0,
+            "in_progress": 0,
+            "waiting": 0,
+            "overdue_tasks": 0,
+            "today_reminders": 0
+        },
+        "recent_tickets": [],
+        "overdue_tasks": [],
+        "today_reminders": [],
+        "overdue_reminders": [],
+        "upcoming_reminders": []
+    }
+}
 ```
 
 API local sem autenticação, construída sobre os sete Models da etapa 1. Não há integração WhatsApp, notificações externas ou exclusões permanentes.
@@ -54,38 +69,38 @@ Datas de filtro usam `YYYY-MM-DD`. Os limites inicial e final de criação de at
 
 Para **cada** recurso abaixo existem estas operações:
 
-| Método | Caminho | Operação |
-| --- | --- | --- |
-| GET | `/api/{recurso}` | Listar com paginação |
-| POST | `/api/{recurso}` | Criar |
-| GET | `/api/{recurso}/{id}` | Consultar |
-| PUT ou PATCH | `/api/{recurso}/{id}` | Atualizar |
+| Método       | Caminho               | Operação             |
+| ------------ | --------------------- | -------------------- |
+| GET          | `/api/{recurso}`      | Listar com paginação |
+| POST         | `/api/{recurso}`      | Criar                |
+| GET          | `/api/{recurso}/{id}` | Consultar            |
+| PUT ou PATCH | `/api/{recurso}/{id}` | Atualizar            |
 
 Recursos: `systems`, `contacts`, `customers`, `support-tickets`, `pending-tasks`, `reminders` e `knowledge-articles`.
 
 Operações adicionais:
 
-| Método | Caminho | Corpo / resultado |
-| --- | --- | --- |
-| PATCH | `/api/support-tickets/{id}/status` | `status` obrigatório; `confirm_open_tasks` opcional |
-| POST | `/api/support-tickets/{id}/close` | Dados opcionais de resolução e confirmação; encerra individualmente |
-| GET | `/api/support-tickets/{id}/related` | Lista paginada do atendimento anterior e dos retornos diretamente ligados a este registro |
-| POST | `/api/pending-tasks/{id}/complete` | `completion_notes` opcional; conclui e registra a data |
-| POST | `/api/reminders/{id}/complete` | Sem corpo; registra a conclusão |
+| Método | Caminho                             | Corpo / resultado                                                                         |
+| ------ | ----------------------------------- | ----------------------------------------------------------------------------------------- |
+| PATCH  | `/api/support-tickets/{id}/status`  | `status` obrigatório; `confirm_open_tasks` opcional                                       |
+| POST   | `/api/support-tickets/{id}/close`   | Dados opcionais de resolução e confirmação; encerra individualmente                       |
+| GET    | `/api/support-tickets/{id}/related` | Lista paginada do atendimento anterior e dos retornos diretamente ligados a este registro |
+| POST   | `/api/pending-tasks/{id}/complete`  | `completion_notes` opcional; conclui e registra a data                                    |
+| POST   | `/api/reminders/{id}/complete`      | Sem corpo; registra a conclusão                                                           |
 
 A ativação/desativação de sistema utiliza `PATCH /api/systems/{id}` com `{"is_active": true}` ou `{"is_active": false}`.
 
 ## Campos de escrita por recurso
 
-| Recurso | Obrigatórios na criação | Opcionais |
-| --- | --- | --- |
-| `systems` | `name` | `description`, `is_active` (padrão true) |
-| `contacts` | `name` | `phone`, `email`, `notes` |
-| `customers` | `name` | `phone`, `email`, `notes` |
-| `support-tickets` | `system_id`, `contact_id`, `title`, `description` | `customer_id`, `previous_ticket_id`, `status`, `resolution`, `verification_source`, `verified_at`, `verified_by`, `verification_notes`, `confirm_open_tasks` |
-| `pending-tasks` | `description` | `support_ticket_id`, `due_at`, `status`, `completion_notes` |
-| `reminders` | `title`, `scheduled_at` | `description`, `support_ticket_id` |
-| `knowledge-articles` | `problem`, `resolution_procedure` | `system_id` |
+| Recurso              | Obrigatórios na criação                           | Opcionais                                                                                                                                                    |
+| -------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `systems`            | `name`                                            | `description`, `is_active` (padrão true)                                                                                                                     |
+| `contacts`           | `name`                                            | `phone`, `email`, `notes`                                                                                                                                    |
+| `customers`          | `name`                                            | `phone`, `email`, `notes`                                                                                                                                    |
+| `support-tickets`    | `system_id`, `contact_id`, `title`, `description` | `customer_id`, `previous_ticket_id`, `status`, `resolution`, `verification_source`, `verified_at`, `verified_by`, `verification_notes`, `confirm_open_tasks` |
+| `pending-tasks`      | `description`                                     | `support_ticket_id`, `due_at`, `status`, `completion_notes`                                                                                                  |
+| `reminders`          | `title`, `scheduled_at`                           | `description`, `support_ticket_id`                                                                                                                           |
+| `knowledge-articles` | `problem`, `resolution_procedure`                 | `system_id`                                                                                                                                                  |
 
 Todos os identificadores associados devem existir. Cliente e contato continuam independentes. Pendências e lembretes podem ser criados ou desvinculados com `support_ticket_id: null`. Artigos podem ser gerais com `system_id: null`.
 
@@ -95,14 +110,14 @@ Todos os identificadores associados devem existir. Cliente e contato continuam i
 
 Além de `page` e `per_page`:
 
-| Recurso | Parâmetros |
-| --- | --- |
-| `systems` | `name` (trecho), `q` (nome), `is_active` (`1` ou `0`) |
-| `contacts`, `customers` | `q` busca nome, telefone, e-mail e observações |
-| `support-tickets` | `system_id`, `contact_id`, `customer_id`, `status`, `created_from`, `created_to`, `q` (título ou descrição) |
-| `pending-tasks` | `support_ticket_id`, `status` (`pending` ou `completed`), `filter` (`open`, `completed` ou `overdue`) |
-| `reminders` | `support_ticket_id`, `filter` (`today`, `overdue`, `upcoming`, `completed` ou `pending`) |
-| `knowledge-articles` | `system_id`, `q` (problema, procedimento ou nome do sistema) |
+| Recurso                 | Parâmetros                                                                                                  |
+| ----------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `systems`               | `name` (trecho), `q` (nome), `is_active` (`1` ou `0`)                                                       |
+| `contacts`, `customers` | `q` busca nome, telefone, e-mail e observações                                                              |
+| `support-tickets`       | `system_id`, `contact_id`, `customer_id`, `status`, `created_from`, `created_to`, `q` (título ou descrição) |
+| `pending-tasks`         | `support_ticket_id`, `status` (`pending` ou `completed`), `filter` (`open`, `completed` ou `overdue`)       |
+| `reminders`             | `support_ticket_id`, `filter` (`today`, `overdue`, `upcoming`, `completed` ou `pending`)                    |
+| `knowledge-articles`    | `system_id`, `q` (problema, procedimento ou nome do sistema)                                                |
 
 Filtros de uma mesma listagem são combinados com AND; os campos pesquisados por `q` são combinados com OR. IDs válidos sem correspondência no filtro retornam lista vazia. Na consulta `/related` são usados apenas `page` e `per_page`.
 
@@ -150,59 +165,91 @@ Lembretes são criados sem conclusão. `/complete` é idempotente e mantém a pr
 Criar sistema — `POST /api/systems`:
 
 ```json
-{"name":"ERP","description":"Sistema de gestão","is_active":true}
+{ "name": "ERP", "description": "Sistema de gestão", "is_active": true }
 ```
 
 Resposta 201 (identificadores e datas variam):
 
 ```json
-{"data":{"id":1,"name":"ERP","description":"Sistema de gestão","is_active":true,"created_at":"2026-10-21T10:00:00-03:00","updated_at":"2026-10-21T10:00:00-03:00"}}
+{
+    "data": {
+        "id": 1,
+        "name": "ERP",
+        "description": "Sistema de gestão",
+        "is_active": true,
+        "created_at": "2026-10-21T10:00:00-03:00",
+        "updated_at": "2026-10-21T10:00:00-03:00"
+    }
+}
 ```
 
 Criar contato — `POST /api/contacts`:
 
 ```json
-{"name":"Ana","phone":"11999999999","email":"ana@example.com"}
+{ "name": "Ana", "phone": "11999999999", "email": "ana@example.com" }
 ```
 
 Criar cliente — `POST /api/customers`:
 
 ```json
-{"name":"Loja Central","notes":"Matriz"}
+{ "name": "Loja Central", "notes": "Matriz" }
 ```
 
 Criar atendimento — `POST /api/support-tickets` (substitua os IDs pelos retornados):
 
 ```json
-{"system_id":1,"contact_id":1,"customer_id":1,"title":"Erro ao emitir nota","description":"Falha ao finalizar emissão fiscal."}
+{
+    "system_id": 1,
+    "contact_id": 1,
+    "customer_id": 1,
+    "title": "Erro ao emitir nota",
+    "description": "Falha ao finalizar emissão fiscal."
+}
 ```
 
 Novo atendimento relacionado — `POST /api/support-tickets`:
 
 ```json
-{"system_id":1,"contact_id":1,"title":"Retorno sobre a emissão","description":"Cliente voltou a solicitar apoio.","previous_ticket_id":1}
+{
+    "system_id": 1,
+    "contact_id": 1,
+    "title": "Retorno sobre a emissão",
+    "description": "Cliente voltou a solicitar apoio.",
+    "previous_ticket_id": 1
+}
 ```
 
 Alterar status — `PATCH /api/support-tickets/1/status`:
 
 ```json
-{"status":"waiting"}
+{ "status": "waiting" }
 ```
 
 Criar pendência — `POST /api/pending-tasks`:
 
 ```json
-{"support_ticket_id":1,"description":"Aguardar log do setor fiscal","due_at":"2026-10-22 09:00:00"}
+{
+    "support_ticket_id": 1,
+    "description": "Aguardar log do setor fiscal",
+    "due_at": "2026-10-22 09:00:00"
+}
 ```
 
 Solicitar encerramento — `POST /api/support-tickets/1/close` com `{}`. Se houver pendências abertas, resposta 409 (trecho ilustrativo; cada pendência inclui seus demais campos):
 
 ```json
 {
-  "message":"Há pendências abertas. Confirme explicitamente para encerrar o atendimento.",
-  "code":"open_pending_tasks",
-  "open_tasks_count":1,
-  "pending_tasks":[{"id":1,"support_ticket_id":1,"description":"Aguardar log do setor fiscal","status":"pending"}]
+    "message": "Há pendências abertas. Confirme explicitamente para encerrar o atendimento.",
+    "code": "open_pending_tasks",
+    "open_tasks_count": 1,
+    "pending_tasks": [
+        {
+            "id": 1,
+            "support_ticket_id": 1,
+            "description": "Aguardar log do setor fiscal",
+            "status": "pending"
+        }
+    ]
 }
 ```
 
@@ -210,12 +257,12 @@ Confirmar encerramento com validação pelo setor — repita `POST /api/support-
 
 ```json
 {
-  "confirm_open_tasks":true,
-  "resolution":"Configuração fiscal corrigida.",
-  "verification_source":"responsible_department",
-  "verified_at":"2026-10-21 15:00:00",
-  "verified_by":"Setor fiscal da Loja Central",
-  "verification_notes":"O setor realizou a emissão e confirmou o funcionamento."
+    "confirm_open_tasks": true,
+    "resolution": "Configuração fiscal corrigida.",
+    "verification_source": "responsible_department",
+    "verified_at": "2026-10-21 15:00:00",
+    "verified_by": "Setor fiscal da Loja Central",
+    "verification_notes": "O setor realizou a emissão e confirmou o funcionamento."
 }
 ```
 
@@ -224,13 +271,18 @@ Resposta 200 contém `data.status = "closed"`, `data.closed_at` e os campos da r
 Concluir pendência — `POST /api/pending-tasks/1/complete`:
 
 ```json
-{"completion_notes":"Log recebido e analisado."}
+{ "completion_notes": "Log recebido e analisado." }
 ```
 
 Criar lembrete independente — `POST /api/reminders`:
 
 ```json
-{"title":"Revisar retornos","description":"Conferir pendências do dia.","scheduled_at":"2026-10-22 09:00:00","support_ticket_id":null}
+{
+    "title": "Revisar retornos",
+    "description": "Conferir pendências do dia.",
+    "scheduled_at": "2026-10-22 09:00:00",
+    "support_ticket_id": null
+}
 ```
 
 Concluir lembrete — `POST /api/reminders/1/complete`, sem corpo ou com `{}`.
@@ -238,7 +290,11 @@ Concluir lembrete — `POST /api/reminders/1/complete`, sem corpo ou com `{}`.
 Criar artigo geral — `POST /api/knowledge-articles`:
 
 ```json
-{"system_id":null,"problem":"Computador sem conexão","resolution_procedure":"Verificar cabo, endereço IP e conectividade com o gateway."}
+{
+    "system_id": null,
+    "problem": "Computador sem conexão",
+    "resolution_procedure": "Verificar cabo, endereço IP e conectividade com o gateway."
+}
 ```
 
 Consulta combinada:
@@ -254,16 +310,32 @@ Formato das listagens (exemplo de sistema, campos abreviados):
 
 ```json
 {
-  "data":[{"id":1,"name":"ERP","is_active":true}],
-  "links":{"first":"http://127.0.0.1:8000/api/systems?page=1","last":"http://127.0.0.1:8000/api/systems?page=1","prev":null,"next":null},
-  "meta":{"current_page":1,"from":1,"last_page":1,"path":"http://127.0.0.1:8000/api/systems","per_page":15,"to":1,"total":1}
+    "data": [{ "id": 1, "name": "ERP", "is_active": true }],
+    "links": {
+        "first": "http://127.0.0.1:8000/api/systems?page=1",
+        "last": "http://127.0.0.1:8000/api/systems?page=1",
+        "prev": null,
+        "next": null
+    },
+    "meta": {
+        "current_page": 1,
+        "from": 1,
+        "last_page": 1,
+        "path": "http://127.0.0.1:8000/api/systems",
+        "per_page": 15,
+        "to": 1,
+        "total": 1
+    }
 }
 ```
 
 Exemplo 422 ao criar sistema sem nome:
 
 ```json
-{"message":"O campo name é obrigatório.","errors":{"name":["O campo name é obrigatório."]}}
+{
+    "message": "O campo name é obrigatório.",
+    "errors": { "name": ["O campo name é obrigatório."] }
+}
 ```
 
 ## Testar no Postman

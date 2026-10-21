@@ -13,32 +13,32 @@
 
 Todas as novas tabelas possuem `id` (bigint unsigned, chave primária), `created_at` e `updated_at`. Os nomes seguem as convenções em inglês do Eloquent: Model singular, tabela plural e chaves `*_id`.
 
-| Tabela / Model | Campos específicos |
-| --- | --- |
-| `systems` / `System` | `name` obrigatório, `description` text opcional, `is_active` boolean obrigatório, padrão `true` |
-| `contacts` / `Contact` | `name` obrigatório; `phone` (até 50 caracteres), `email` e `notes` text opcionais |
-| `customers` / `Customer` | `name` obrigatório; `phone` (até 50 caracteres), `email` e `notes` text opcionais |
-| `support_tickets` / `SupportTicket` | `system_id` e `contact_id` obrigatórios; `customer_id` e `previous_ticket_id` opcionais; `title` e `description` text obrigatórios; `status` (até 50 caracteres, padrão `open`); `resolution` text, `verification_notes` text, `verified_by`, `verified_at` datetime e `closed_at` datetime opcionais |
-| `pending_tasks` / `PendingTask` | `support_ticket_id` opcional; `description` text obrigatório; `due_at` datetime opcional; `status` (até 50 caracteres, padrão `pending`); `completion_notes` text e `completed_at` datetime opcionais |
-| `reminders` / `Reminder` | `support_ticket_id` opcional; `title` obrigatório; `description` text opcional; `scheduled_at` datetime obrigatório; `completed_at` datetime opcional |
-| `knowledge_articles` / `KnowledgeArticle` | `system_id` opcional; `problem` e `resolution_procedure` text obrigatórios |
+| Tabela / Model                            | Campos específicos                                                                                                                                                                                                                                                                                    |
+| ----------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `systems` / `System`                      | `name` obrigatório, `description` text opcional, `is_active` boolean obrigatório, padrão `true`                                                                                                                                                                                                       |
+| `contacts` / `Contact`                    | `name` obrigatório; `phone` (até 50 caracteres), `email` e `notes` text opcionais                                                                                                                                                                                                                     |
+| `customers` / `Customer`                  | `name` obrigatório; `phone` (até 50 caracteres), `email` e `notes` text opcionais                                                                                                                                                                                                                     |
+| `support_tickets` / `SupportTicket`       | `system_id` e `contact_id` obrigatórios; `customer_id` e `previous_ticket_id` opcionais; `title` e `description` text obrigatórios; `status` (até 50 caracteres, padrão `open`); `resolution` text, `verification_notes` text, `verified_by`, `verified_at` datetime e `closed_at` datetime opcionais |
+| `pending_tasks` / `PendingTask`           | `support_ticket_id` opcional; `description` text obrigatório; `due_at` datetime opcional; `status` (até 50 caracteres, padrão `pending`); `completion_notes` text e `completed_at` datetime opcionais                                                                                                 |
+| `reminders` / `Reminder`                  | `support_ticket_id` opcional; `title` obrigatório; `description` text opcional; `scheduled_at` datetime obrigatório; `completed_at` datetime opcional                                                                                                                                                 |
+| `knowledge_articles` / `KnowledgeArticle` | `system_id` opcional; `problem` e `resolution_procedure` text obrigatórios                                                                                                                                                                                                                            |
 
 Campos string sem comprimento indicado aceitam até 255 caracteres. Datas de domínio usam datetime; timestamps de auditoria seguem o padrão Laravel. Os Models convertem datas para Carbon e `is_active` para boolean.
 
 ## Relacionamentos
 
-| Origem | Relacionamento Eloquent | Destino |
-| --- | --- | --- |
-| Sistema | `supportTickets()` / `knowledgeArticles()` — hasMany | Atendimentos / artigos |
-| Contato | `supportTickets()` — hasMany | Atendimentos |
-| Cliente | `supportTickets()` — hasMany | Atendimentos |
-| Atendimento | `system()` / `contact()` — belongsTo obrigatório | Sistema / contato |
-| Atendimento | `customer()` — belongsTo opcional | Cliente |
-| Atendimento | `previousTicket()` — belongsTo opcional | Atendimento anterior |
-| Atendimento | `followUpTickets()` — hasMany | Novos atendimentos referentes ao problema anterior |
-| Atendimento | `pendingTasks()` / `reminders()` — hasMany | Pendências / lembretes |
-| Pendência / lembrete | `supportTicket()` — belongsTo opcional | Atendimento |
-| Artigo | `system()` — belongsTo opcional | Sistema |
+| Origem               | Relacionamento Eloquent                              | Destino                                            |
+| -------------------- | ---------------------------------------------------- | -------------------------------------------------- |
+| Sistema              | `supportTickets()` / `knowledgeArticles()` — hasMany | Atendimentos / artigos                             |
+| Contato              | `supportTickets()` — hasMany                         | Atendimentos                                       |
+| Cliente              | `supportTickets()` — hasMany                         | Atendimentos                                       |
+| Atendimento          | `system()` / `contact()` — belongsTo obrigatório     | Sistema / contato                                  |
+| Atendimento          | `customer()` — belongsTo opcional                    | Cliente                                            |
+| Atendimento          | `previousTicket()` — belongsTo opcional              | Atendimento anterior                               |
+| Atendimento          | `followUpTickets()` — hasMany                        | Novos atendimentos referentes ao problema anterior |
+| Atendimento          | `pendingTasks()` / `reminders()` — hasMany           | Pendências / lembretes                             |
+| Pendência / lembrete | `supportTicket()` — belongsTo opcional               | Atendimento                                        |
+| Artigo               | `system()` — belongsTo opcional                      | Sistema                                            |
 
 Contato e cliente são cadastros independentes, sem chave estrangeira entre eles. Um atendimento anterior pode receber vários retornos. Cada registro mantém status, encerramento e verificação próprios, sem propagação automática de alterações.
 
@@ -106,17 +106,17 @@ Modificados: `.env` (somente geração da chave ausente, arquivo ignorado pelo G
 
 ## Verificações executadas em 21/10/2026
 
-| Verificação | Resultado |
-| --- | --- |
-| `php -v` / `php artisan --version` | PHP 8.5.11 / Laravel 13.37.0 |
-| Conexão PDO MySQL e `SELECT VERSION()` | MySQL 8.4.11; banco inicialmente sem tabelas |
-| Geração condicional de `APP_KEY` via `key:generate` | Chave local gerada porque estava ausente/vazia |
-| `php artisan migrate --no-interaction` | 10 migrations aplicadas: 3 originais e 7 do domínio |
-| `php artisan migrate:status` | Todas com status `Ran` |
-| `php artisan test` | 29 testes aprovados, 68 assertions; inclui 27 casos do domínio |
-| `php vendor/bin/pint --dirty`, seguido de `php vendor/bin/pint --test` | Arquivos formatados; verificação final aprovada |
-| `php vendor/bin/phpstan analyse --no-progress --memory-limit=512M` | Aprovado sem erros |
-| `migrate`, `migrate:rollback`, `migrate` em SQLite em memória | Aplicação, reversão completa e reaplicação aprovadas; MySQL preservado |
-| `git diff --check` | Aprovado |
+| Verificação                                                            | Resultado                                                              |
+| ---------------------------------------------------------------------- | ---------------------------------------------------------------------- |
+| `php -v` / `php artisan --version`                                     | PHP 8.5.11 / Laravel 13.37.0                                           |
+| Conexão PDO MySQL e `SELECT VERSION()`                                 | MySQL 8.4.11; banco inicialmente sem tabelas                           |
+| Geração condicional de `APP_KEY` via `key:generate`                    | Chave local gerada porque estava ausente/vazia                         |
+| `php artisan migrate --no-interaction`                                 | 10 migrations aplicadas: 3 originais e 7 do domínio                    |
+| `php artisan migrate:status`                                           | Todas com status `Ran`                                                 |
+| `php artisan test`                                                     | 29 testes aprovados, 68 assertions; inclui 27 casos do domínio         |
+| `php vendor/bin/pint --dirty`, seguido de `php vendor/bin/pint --test` | Arquivos formatados; verificação final aprovada                        |
+| `php vendor/bin/phpstan analyse --no-progress --memory-limit=512M`     | Aprovado sem erros                                                     |
+| `migrate`, `migrate:rollback`, `migrate` em SQLite em memória          | Aplicação, reversão completa e reaplicação aprovadas; MySQL preservado |
+| `git diff --check`                                                     | Aprovado                                                               |
 
 As primeiras execuções encontraram restrições do sandbox ao ler/escrever arquivos PHP e acessar MySQL; os comandos necessários foram repetidos fora dele, com aprovação. A análise estática inicialmente excedeu 128 MB e passou com 512 MB. O teste HTTP original inicialmente falhou por falta de `APP_KEY` e de build Vite; as correções de configuração dos testes descritas acima resolveram ambas as falhas. Não há pendência de credenciais, conexão ou migrations nesta etapa.

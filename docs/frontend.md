@@ -68,19 +68,19 @@ Os seis cadastros compartilham comportamentos de listagem e edição, mas mantê
 
 ## Páginas e funcionalidades
 
-| Rota | Funcionalidades |
-| --- | --- |
-| `/` | Cinco indicadores reais, atendimentos recentes, pendências atrasadas, lembretes de hoje, atrasados e próximos; atalhos de cadastro |
-| `/atendimentos` | Tabela com ID, título, sistema, contato, cliente, status e abertura; pesquisa, filtros por cadastros/status/período e paginação real |
-| `/atendimentos/novo` | Cadastro com sistema ativo, contato obrigatório, cliente e atendimento anterior opcionais; resolução e confirmação opcionais |
-| `/atendimentos/{id}` | Detalhes completos, status, resolução, confirmação, vínculos diretos, pendências e lembretes; edição, encerramento e registro de retorno |
-| `/atendimentos/{id}/editar` | Edição dos dados e da confirmação, preservando o sistema inativo atual em registros históricos |
-| `/pendencias` | Cadastro, consulta, edição, conclusão e reabertura por situação; filtros de abertas/concluídas/atrasadas e por atendimento; prazo e observações de conclusão |
-| `/lembretes` | Cadastro, consulta, edição e conclusão; filtros de hoje/atrasados/próximos/concluídos/não concluídos; associação opcional |
-| `/conhecimento` | Cadastro, detalhe e edição de artigos; pesquisa por problema, procedimento ou sistema e filtro de sistema; artigos gerais permitidos |
-| `/contatos` | Cadastro, consulta, edição e pesquisa por nome, telefone, e-mail e observações |
-| `/clientes` | Cadastro, consulta, edição e pesquisa; cadastro independente dos contatos |
-| `/sistemas` | Cadastro, consulta e edição; filtro por nome e ativo/inativo; ativação/desativação com confirmação e sem exclusão |
+| Rota                        | Funcionalidades                                                                                                                                              |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/`                         | Cinco indicadores reais, atendimentos recentes, pendências atrasadas, lembretes de hoje, atrasados e próximos; atalhos de cadastro                           |
+| `/atendimentos`             | Tabela com ID, título, sistema, contato, cliente, status e abertura; pesquisa, filtros por cadastros/status/período e paginação real                         |
+| `/atendimentos/novo`        | Cadastro com sistema ativo, contato obrigatório, cliente e atendimento anterior opcionais; resolução e confirmação opcionais                                 |
+| `/atendimentos/{id}`        | Detalhes completos, status, resolução, confirmação, vínculos diretos, pendências e lembretes; edição, encerramento e registro de retorno                     |
+| `/atendimentos/{id}/editar` | Edição dos dados e da confirmação, preservando o sistema inativo atual em registros históricos                                                               |
+| `/pendencias`               | Cadastro, consulta, edição, conclusão e reabertura por situação; filtros de abertas/concluídas/atrasadas e por atendimento; prazo e observações de conclusão |
+| `/lembretes`                | Cadastro, consulta, edição e conclusão; filtros de hoje/atrasados/próximos/concluídos/não concluídos; associação opcional                                    |
+| `/conhecimento`             | Cadastro, detalhe e edição de artigos; pesquisa por problema, procedimento ou sistema e filtro de sistema; artigos gerais permitidos                         |
+| `/contatos`                 | Cadastro, consulta, edição e pesquisa por nome, telefone, e-mail e observações                                                                               |
+| `/clientes`                 | Cadastro, consulta, edição e pesquisa; cadastro independente dos contatos                                                                                    |
+| `/sistemas`                 | Cadastro, consulta e edição; filtro por nome e ativo/inativo; ativação/desativação com confirmação e sem exclusão                                            |
 
 A navegação é feita pelo Vue Router sem recarregar o documento. Filtros e paginação ficam na URL, permitindo atualizar a página, compartilhar o caminho local e usar voltar/avançar do navegador.
 

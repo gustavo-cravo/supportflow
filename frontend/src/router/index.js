@@ -57,6 +57,7 @@ const router = createRouter({
     scrollBehavior: () => ({ top: 0 }),
 })
 router.afterEach((to) => {
-    document.title = (to.meta.title || 'Dashboard') + ' · SupportFlow'
+    const title = typeof to.meta.title === 'string' ? to.meta.title : ''
+    document.title = (title || 'Dashboard') + ' · SupportFlow'
 })
 export default router
