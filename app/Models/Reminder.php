@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+/**
+ * @property CarbonInterface $scheduled_at
+ * @property CarbonInterface|null $completed_at
+ */
 #[Fillable(['support_ticket_id', 'title', 'description', 'scheduled_at', 'completed_at'])]
 class Reminder extends Model
 {

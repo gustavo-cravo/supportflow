@@ -1,5 +1,7 @@
 # SupportFlow — banco de dados (etapa 1)
 
+> Atualização da etapa 2: a migration incremental `2026_10_21_000008_add_verification_source_to_support_tickets_table.php` adiciona `support_tickets.verification_source` (string de até 50 caracteres, opcional), sem modificar migrations anteriores ou dados existentes. As decisões provisórias sobre status, sistemas inativos, vínculos e conclusão passaram a seguir as regras da [API REST](api.md). O restante deste documento registra a entrega da etapa 1.
+
 ## Ambiente e configuração
 
 - Laravel 13.37.0, PHP 8.5.11 e MySQL 8.4.11 identificados no ambiente local.

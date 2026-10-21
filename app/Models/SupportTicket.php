@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['system_id', 'contact_id', 'customer_id', 'previous_ticket_id', 'title', 'description', 'status', 'resolution', 'verification_notes', 'verified_by', 'verified_at', 'closed_at'])]
+/**
+ * @property CarbonInterface|null $verified_at
+ * @property CarbonInterface|null $closed_at
+ */
+#[Fillable(['system_id', 'contact_id', 'customer_id', 'previous_ticket_id', 'title', 'description', 'status', 'resolution', 'verification_source', 'verification_notes', 'verified_by', 'verified_at', 'closed_at'])]
 class SupportTicket extends Model
 {
     /** @var array<string, mixed> */
