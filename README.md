@@ -31,16 +31,16 @@ O **SupportFlow** nasceu para resolver esse problema do dia a dia: reunir atendi
 
 ## ✨ Funcionalidades
 
-| Recurso | O que permite fazer |
-| :--- | :--- |
-| 🗂️ **Gestão de atendimentos** | Registrar e acompanhar cada interação de suporte com seu próprio histórico e situação. |
+| Recurso                              | O que permite fazer                                                                                              |
+| :----------------------------------- | :--------------------------------------------------------------------------------------------------------------- |
+| 🗂️ **Gestão de atendimentos**        | Registrar e acompanhar cada interação de suporte com seu próprio histórico e situação.                           |
 | 👤 **Contatos e clientes separados** | Identificar quem entrou em contato e, quando aplicável, qual cliente ou empresa está relacionado ao atendimento. |
-| 🧩 **Sistemas atendidos** | Associar cada atendimento a um sistema e desativar sistemas sem perder o histórico. |
-| 🔗 **Atendimentos relacionados** | Conectar novos contatos a atendimentos anteriores sobre o mesmo problema, sem misturar seus encerramentos. |
-| 📌 **Pendências e encaminhamentos** | Manter visível o que ainda depende de retorno, análise ou ação de terceiros. |
-| ⏰ **Lembretes internos** | Organizar retornos de hoje, atrasados e próximos — vinculados a atendimentos ou independentes. |
-| 📚 **Consulta de soluções** | Centralizar informações úteis para lidar com problemas recorrentes. |
-| ✅ **Encerramento com contexto** | Alertar sobre pendências abertas e registrar como a resolução foi confirmada. |
+| 🧩 **Sistemas atendidos**            | Associar cada atendimento a um sistema e desativar sistemas sem perder o histórico.                              |
+| 🔗 **Atendimentos relacionados**     | Conectar novos contatos a atendimentos anteriores sobre o mesmo problema, sem misturar seus encerramentos.       |
+| 📌 **Pendências e encaminhamentos**  | Manter visível o que ainda depende de retorno, análise ou ação de terceiros.                                     |
+| ⏰ **Lembretes internos**            | Organizar retornos de hoje, atrasados e próximos — vinculados a atendimentos ou independentes.                   |
+| 📚 **Consulta de soluções**          | Centralizar informações úteis para lidar com problemas recorrentes.                                              |
+| ✅ **Encerramento com contexto**     | Alertar sobre pendências abertas e registrar como a resolução foi confirmada.                                    |
 
 ### 🔄 Como funciona na prática
 
@@ -83,13 +83,13 @@ O projeto foi pensado para **uso individual**, a partir de situações reais da 
 
 ## 🏗️ Tecnologias e arquitetura
 
-| Camada | Tecnologia |
-| :--- | :--- |
-| **Backend / API** | PHP + Laravel 13 |
-| **Frontend** | Vue 3 + Vite |
-| **Banco de dados** | MySQL 8.4 |
-| **Comunicação** | API HTTP entre frontend e backend |
-| **Controle de versão** | Git + GitHub |
+| Camada                 | Tecnologia                        |
+| :--------------------- | :-------------------------------- |
+| **Backend / API**      | PHP + Laravel 13                  |
+| **Frontend**           | Vue 3 + Vite                      |
+| **Banco de dados**     | MySQL 8.4                         |
+| **Comunicação**        | API HTTP entre frontend e backend |
+| **Controle de versão** | Git + GitHub                      |
 
 **Organização geral do repositório:**
 
@@ -206,6 +206,6 @@ Seu propósito vai além de registrar chamados: é construir um fluxo de trabalh
 
 **Cada atendimento tem uma história. Cada pendência merece acompanhamento.**
 
-*Desenvolvido a partir de problemas reais, para tornar o suporte mais organizado.*
+_Desenvolvido a partir de problemas reais, para tornar o suporte mais organizado._
 
 </div>
