@@ -7,7 +7,11 @@ import FormField from './FormField.vue'
 const props = defineProps({ config: Object, record: Object, defaults: Object })
 const emit = defineEmits(['close', 'saved'])
 const fields = computed(() =>
-    props.config.fields.filter((field) => !field.editOnly || props.record?.id),
+    props.config.fields
+        .filter((field) => !field.editOnly || props.record?.id)
+        .map((field) =>
+            field.requiredOnCreate ? { ...field, required: !props.record?.id } : field,
+        ),
 )
 const values = reactive(initialValues(fields.value, props.record || props.defaults || {}))
 const busy = ref(false),

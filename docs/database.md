@@ -1,5 +1,7 @@
 # SupportFlow — banco de dados (etapa 1)
 
+> Atualização do cadastro de clientes: `2026_10_22_000001_add_document_to_customers_table.php` adiciona `customers.document` como string nullable de até 14 caracteres. A API exige CPF/CNPJ apenas na criação. A migration não preenche nem altera registros existentes. A coluna permanece nullable para compatibilidade com clientes antigos.
+
 > Atualização da etapa 2: a migration incremental `2026_10_21_000008_add_verification_source_to_support_tickets_table.php` adiciona `support_tickets.verification_source` (string de até 50 caracteres, opcional), sem modificar migrations anteriores ou dados existentes. As decisões provisórias sobre status, sistemas inativos, vínculos e conclusão passaram a seguir as regras da [API REST](api.md). O restante deste documento registra a entrega da etapa 1.
 
 ## Ambiente e configuração

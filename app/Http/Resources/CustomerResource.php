@@ -14,6 +14,7 @@ class CustomerResource extends ApiResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'document' => $this->document,
             'phone' => $this->phone,
             'email' => $this->email,
             'notes' => $this->notes,

@@ -25,7 +25,12 @@ export function validateFields(fields, values) {
     const errors = {}
     for (const field of fields) {
         const value = values[field.name]
-        if (
+        if (field.mask === 'cpf-cnpj') {
+            const digits = String(value ?? '').replace(/\D/g, '')
+            if (field.required && !digits) errors[field.name] = ['O CPF ou CNPJ é obrigatório.']
+            else if (digits && !/^(\d{11}|\d{14})$/.test(digits))
+                errors[field.name] = ['Informe um CPF com 11 dígitos ou um CNPJ com 14 dígitos.']
+        } else if (
             field.required &&
             (value === null || value === undefined || String(value).trim() === '')
         )

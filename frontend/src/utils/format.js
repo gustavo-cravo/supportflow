@@ -73,3 +73,17 @@ export function fieldError(errors, name, label) {
     return (errors?.[name]?.[0] || '').replaceAll(name, label.toLowerCase())
 }
 export const emptyToNull = (value) => (value === '' ? null : value)
+
+export function formatDocument(value) {
+    const digits = String(value ?? '').replace(/\D/g, '')
+    return digits.length <= 11
+        ? digits
+              .replace(/^(\d{3})(\d)/, '$1.$2')
+              .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+              .replace(/(\d{3})\.(\d{3})\.(\d{3})(\d)/, '$1.$2.$3-$4')
+        : digits
+              .replace(/^(\d{2})(\d)/, '$1.$2')
+              .replace(/^(\d{2})\.(\d{3})(\d)/, '$1.$2.$3')
+              .replace(/(\d{3})\.(\d{3})(\d)/, '$1.$2/$3')
+              .replace(/(\/\d{4})(\d)/, '$1-$2')
+}

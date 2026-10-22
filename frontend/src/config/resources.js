@@ -83,7 +83,19 @@ export const resources = {
         singular: 'cliente',
         icon: 'building',
         description: 'Empresas, lojas e clientes dos seus atendimentos.',
-        fields: registration,
+        fields: [
+            registration[0],
+            {
+                name: 'document',
+                label: 'CPF/CNPJ',
+                type: 'text',
+                mask: 'cpf-cnpj',
+                requiredOnCreate: true,
+                inputmode: 'numeric',
+                placeholder: 'CPF com 11 dígitos ou CNPJ com 14 dígitos',
+            },
+            ...registration.slice(1),
+        ],
         filters: [search],
         columns: [
             { key: 'name', label: 'Cliente', primary: true },

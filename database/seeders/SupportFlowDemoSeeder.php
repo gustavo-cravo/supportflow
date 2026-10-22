@@ -92,11 +92,15 @@ class SupportFlowDemoSeeder extends Seeder
     {
         $customers = [];
         for ($index = 1; $index <= 20; $index++) {
-            $customers[] = $this->record(Customer::class, 'name', sprintf('CLI-%03d', $index), $this->faker->company(), [
+            $customer = $this->record(Customer::class, 'name', sprintf('CLI-%03d', $index), $this->faker->company(), [
                 'phone' => $index % 4 === 0 ? null : $this->faker->phoneNumber(),
                 'email' => $index % 6 === 0 ? null : sprintf('empresa.%02d@supportflow.example.test', $index),
                 'notes' => 'Empresa fictícia. Unidade de '.$this->faker->city().'; atendimento a oficinas, lojas e serviços automotivos.',
             ]);
+            if ($customer->wasRecentlyCreated) {
+                $customer->update(['document' => sprintf('1234567800%04d', $index)]);
+            }
+            $customers[] = $customer;
         }
 
         return $customers;

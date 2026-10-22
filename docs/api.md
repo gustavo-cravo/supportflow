@@ -96,13 +96,17 @@ A ativação/desativação de sistema utiliza `PATCH /api/systems/{id}` com `{"i
 | -------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `systems`            | `name`                                            | `description`, `is_active` (padrão true)                                                                                                                     |
 | `contacts`           | `name`                                            | `phone`, `email`, `notes`                                                                                                                                    |
-| `customers`          | `name`                                            | `phone`, `email`, `notes`                                                                                                                                    |
+| `customers`          | `name`, `document`                                | `phone`, `email`, `notes`                                                                                                                                    |
 | `support-tickets`    | `system_id`, `contact_id`, `title`, `description` | `customer_id`, `previous_ticket_id`, `status`, `resolution`, `verification_source`, `verified_at`, `verified_by`, `verification_notes`, `confirm_open_tasks` |
 | `pending-tasks`      | `description`                                     | `support_ticket_id`, `due_at`, `status`, `completion_notes`                                                                                                  |
 | `reminders`          | `title`, `scheduled_at`                           | `description`, `support_ticket_id`                                                                                                                           |
 | `knowledge-articles` | `problem`, `resolution_procedure`                 | `system_id`                                                                                                                                                  |
 
 Todos os identificadores associados devem existir. Cliente e contato continuam independentes. Pendências e lembretes podem ser criados ou desvinculados com `support_ticket_id: null`. Artigos podem ser gerais com `system_id: null`.
+
+Em clientes, `document` é uma string obrigatória na criação: CPF com 11 dígitos ou CNPJ com 14 dígitos. A API aceita pontuação e espaços, remove os caracteres não numéricos e valida a quantidade de dígitos antes de salvar. Zeros à esquerda são preservados; não há validação de dígitos verificadores nem unicidade. Ausência ou valor vazio retorna 422 com `O CPF ou CNPJ é obrigatório.`; formato inválido retorna `Informe um CPF com 11 dígitos ou um CNPJ com 14 dígitos.` em `errors.document`.
+
+Em `PUT` e `PATCH`, o documento pode ser omitido ou enviado como `null`; um documento preenchido passa pela mesma normalização e validação. Clientes antigos sem documento continuam disponíveis para listagem, consulta, edição e associação aos atendimentos.
 
 `closed_at` e `completed_at` são controlados pelas operações e não aceitam datas manuais. `created_at` e `updated_at` são gerenciados pelo Eloquent.
 
@@ -192,7 +196,7 @@ Criar contato — `POST /api/contacts`:
 Criar cliente — `POST /api/customers`:
 
 ```json
-{ "name": "Loja Central", "notes": "Matriz" }
+{ "name": "Loja Central", "document": "12.345.678/0001-90", "notes": "Matriz" }
 ```
 
 Criar atendimento — `POST /api/support-tickets` (substitua os IDs pelos retornados):

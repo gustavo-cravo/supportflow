@@ -97,6 +97,10 @@ O parâmetro de interface `novo=1` abre o formulário do respectivo cadastro. `v
 - A associação de pendências e lembretes pode ser removida; os artigos podem não possuir sistema. Não existe ação de exclusão permanente.
 - Filtros de prazo das pendências usam o estado de atraso calculado pelo backend. Não foi inventado filtro de intervalo de `due_at` que a API atual não oferece.
 
+### CPF/CNPJ de clientes
+
+Novos clientes exigem o campo CPF/CNPJ. A máscara alterna entre CPF (11 dígitos) e CNPJ (14 dígitos), inclusive ao colar ou apagar números. O formulário bloqueia documentos vazios ou com quantidade inválida de dígitos e apresenta o erro junto ao campo, incluindo mensagens 422 da API. A edição e a consulta de clientes antigos sem documento continuam disponíveis; documentos preenchidos na edição também são validados.
+
 ### Encerramento com pendências
 
 A escolha de `closed` no seletor de status abre o mesmo fluxo de encerramento do botão próprio. A primeira chamada utiliza `POST /api/support-tickets/{id}/close` sem `confirm_open_tasks`.
