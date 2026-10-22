@@ -12,7 +12,7 @@ test('isolated integrated workflow preserves history and uses relative Sao Paulo
         $secondSystem = $this->postJson('/api/systems', ['name' => 'QA Fiscal'])->assertCreated()->json('data.id');
         $inactive = $this->postJson('/api/systems', ['name' => 'QA Legado', 'is_active' => false])->assertCreated()->json('data.id');
         $contact = $this->postJson('/api/contacts', ['name' => 'QA Ana'])->assertCreated()->json('data.id');
-        $customer = $this->postJson('/api/customers', ['name' => 'QA Loja'])->assertCreated()->json('data.id');
+        $customer = $this->postJson('/api/customers', ['name' => 'QA Loja', 'document' => '12345678000190'])->assertCreated()->json('data.id');
         $this->getJson('/api/systems?is_active=1')->assertJsonCount(2, 'data');
         $payload = ['system_id' => $system, 'contact_id' => $contact, 'customer_id' => $customer, 'title' => 'QA Fiscal', 'description' => 'Erro fictício'];
         $this->postJson('/api/support-tickets', [])->assertUnprocessable()->assertJsonValidationErrors(['system_id', 'contact_id', 'title', 'description']);

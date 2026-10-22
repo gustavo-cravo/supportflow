@@ -34,7 +34,7 @@ function supportFlowApiPayload(string $resource, array $ticketData): array
     return match ($resource) {
         'systems' => ['name' => 'Financeiro', 'description' => 'Contas a pagar'],
         'contacts' => ['name' => 'Bruno', 'phone' => '1133334444', 'email' => 'bruno@example.com'],
-        'customers' => ['name' => 'Loja Norte', 'notes' => 'Matriz'],
+        'customers' => ['name' => 'Loja Norte', 'document' => '12345678901', 'notes' => 'Matriz'],
         'support-tickets' => $ticketData,
         'pending-tasks' => ['description' => 'Solicitar log', 'due_at' => '2026-10-22 09:00:00'],
         'reminders' => ['title' => 'Retornar ligação', 'scheduled_at' => '2026-10-22 09:00:00'],
@@ -65,7 +65,7 @@ test('resources support creation, detail, update, pagination and reject deletion
 test('creation validates required fields', function (string $resource, array $fields) {
     $this->postJson('/api/'.$resource, [])->assertUnprocessable()->assertJsonValidationErrors($fields);
 })->with([
-    ['systems', ['name']], ['contacts', ['name']], ['customers', ['name']],
+    ['systems', ['name']], ['contacts', ['name']], ['customers', ['name', 'document']],
     ['support-tickets', ['system_id', 'contact_id', 'title', 'description']],
     ['pending-tasks', ['description']], ['reminders', ['title', 'scheduled_at']],
     ['knowledge-articles', ['problem', 'resolution_procedure']],

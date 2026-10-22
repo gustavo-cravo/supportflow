@@ -1,6 +1,6 @@
 <script setup>
 import { computed } from 'vue'
-import { fieldError } from '@/utils/format'
+import { fieldError, formatDocument } from '@/utils/format'
 import RelationSelect from './RelationSelect.vue'
 const props = defineProps({
     field: Object,
@@ -8,9 +8,15 @@ const props = defineProps({
     errors: Object,
     prefix: { type: String, default: 'field' },
 })
-defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue'])
 const id = computed(() => props.prefix + '-' + props.field.name)
 const error = computed(() => fieldError(props.errors, props.field.name, props.field.label))
+function updateInput(event) {
+    if (props.field.mask === 'cpf-cnpj') {
+        event.target.value = formatDocument(event.target.value)
+    }
+    emit('update:modelValue', event.target.value)
+}
 </script>
 <template>
     <div class="form-field" :class="{ 'field-full': field.full }">
@@ -78,14 +84,15 @@ const error = computed(() => fieldError(props.errors, props.field.name, props.fi
             :id="id"
             class="input"
             :type="field.type || 'text'"
-            :value="modelValue"
+            :value="field.mask === 'cpf-cnpj' ? formatDocument(modelValue) : modelValue"
+            :inputmode="field.inputmode"
             :required="field.required"
             :maxlength="field.max"
             :step="field.type === 'datetime-local' ? 1 : undefined"
             :placeholder="field.placeholder"
             :aria-invalid="!!error"
             :aria-describedby="error ? id + '-error' : undefined"
-            @input="$emit('update:modelValue', $event.target.value)"
+            @input="updateInput"
         />
         <p v-if="error" :id="id + '-error'" class="field-error" role="alert">{{ error }}</p>
         <small v-if="field.type === 'datetime-local'" class="field-hint">Horário de Brasília</small>

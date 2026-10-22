@@ -41,6 +41,9 @@ test('demo seeder is independently executable and creates realistic related hist
     expect(KnowledgeArticle::whereNull('system_id')->count())->toBe(4);
     expect(Contact::whereNotNull('email')->where('email', 'not like', '%@supportflow.example.test')->count())->toBe(0);
     expect(Customer::whereNotNull('email')->where('email', 'not like', '%@supportflow.example.test')->count())->toBe(0);
+    foreach (Customer::all() as $customer) {
+        expect($customer->document)->toMatch('/^[0-9]{14}$/');
+    }
     foreach (TicketStatus::cases() as $status) {
         expect(SupportTicket::where('status', $status->value)->exists())->toBeTrue();
     }
@@ -85,6 +88,14 @@ test('demo seeder is independently executable and creates realistic related hist
             expect($parent->previous_ticket_id)->toBeNull();
         }
     }
+});
+
+test('demo seeder preserves existing customers without documents', function () {
+    $customer = Customer::create(['name' => '[DEMO SF] CLI-001 | Cliente antigo']);
+    $this->artisan('db:seed', ['--class' => SupportFlowDemoSeeder::class])->assertSuccessful();
+
+    expect($customer->fresh()->document)->toBeNull();
+    expect(Customer::whereNotNull('document')->count())->toBe(19);
 });
 
 test('demo follow-ups keep independent closures through the existing API', function () {
