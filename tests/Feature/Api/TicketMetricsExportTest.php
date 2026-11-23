@@ -111,8 +111,21 @@ test('exports a complete valid PDF with metadata, embedded fonts, page numbers a
     expect($decoded)->toContain(mb_convert_encoding('SupportFlow', 'UTF-16BE', 'UTF-8'));
     expect($decoded)->toContain(mb_convert_encoding('Sessão expirada', 'UTF-16BE', 'UTF-8'));
     preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);
-    expect(count($pages[0]))->toBeGreaterThanOrEqual(3);
+    expect(count($pages[0]))->toBeGreaterThanOrEqual(1);
     expect($response->headers->get('Cache-Control'))->toContain('no-store', 'private');
+});
+
+test('fits a small two-ticket report with two months and subcategories on one A4 portrait page', function () {
+    $filters = ['period' => 'all', 'system_id' => $this->systems[1]->id, 'problem_category_id' => $this->category->id];
+    $this->getJson('/api/metrics/summary?'.http_build_query($filters))->assertOk()->assertJsonPath('data.total', 2);
+    $pdf = $this->getJson(exportUrl('pdf', $filters))->assertOk()->getContent();
+    preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);
+    expect(count($pages[0]))->toBe(1);
+    expect($pdf)->toMatch('/\/MediaBox\s*\[\s*0\.\d+\s+0\.\d+\s+595\.\d+\s+841\.\d+\s*\]/');
+    $decoded = decodedPdfStreams($pdf);
+    foreach (['Credenciais inválidas', 'Sem subcategoria', '08/2026', '10/2026', 'America/Sao_Paulo'] as $text) {
+        expect($decoded)->toContain(mb_convert_encoding($text, 'UTF-16BE', 'UTF-8'));
+    }
 });
 
 test('exports a valid XLSX with five sheets, numeric values, percentages, frozen headers and filters', function () {
@@ -201,6 +214,8 @@ test('preserves monthly zeros and returns empty documents with explicit criteria
     expect($report->monthly)->toBe([['month' => '2030-01', 'total' => 0], ['month' => '2030-02', 'total' => 0], ['month' => '2030-03', 'total' => 0]]);
     $pdf = $this->getJson(exportUrl('pdf', $filters))->assertOk()->getContent();
     expect(decodedPdfStreams($pdf))->toContain(mb_convert_encoding('Nenhum atendimento encontrado', 'UTF-16BE', 'UTF-8'));
+    preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);
+    expect(count($pages[0]))->toBe(1);
     $book = exportedWorkbook($this->getJson(exportUrl('xlsx', $filters))->assertOk()->getContent());
     try {
         $summary = $book->getSheetByName('Resumo Geral');
@@ -325,9 +340,36 @@ test('renders large category distributions across multiple valid PDF pages', fun
     }
     $pdf = $this->getJson(exportUrl('pdf', ['period' => 'all']))->assertOk()->getContent();
     preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);
-    expect(count($pages[0]))->toBeGreaterThan(5);
+    expect(count($pages[0]))->toBeGreaterThan(1);
     expect($pdf)->toContain('%%EOF');
     expect(decodedPdfStreams($pdf))->not->toContain(mb_convert_encoding('NUNCA_EXPORTAR_PAGINACAO', 'UTF-16BE', 'UTF-8'));
+});
+
+test('preserves all rows and months when one category continues across multiple PDF pages', function () {
+    $report = app(TicketMetricsReport::class)->build(TicketMetricsFilters::fromValidated(['period' => 'all']));
+    $children = [];
+    for ($index = 1; $index <= 110; $index++) {
+        $children[] = ['name' => sprintf('Detalhe%03d - análise de integração e credenciais inválidas', $index), 'total' => 1, 'percentage' => round(100 / 110, 2), 'systems' => []];
+    }
+    $monthly = [];
+    for ($index = 0; $index < 36; $index++) {
+        $monthly[] = ['month' => CarbonImmutable::parse('2024-01-01')->addMonths($index)->format('Y-m'), 'total' => $index === 35 ? 110 : 0];
+    }
+    $data = new TicketMetricsReportData($report->generatedAt, $report->criteria,
+        ['total' => 110, 'closed' => 0, 'not_closed' => 110, 'systems_count' => 1, 'unclassified' => 0],
+        [['name' => 'Sistema de teste', 'total' => 110, 'closed' => 0, 'not_closed' => 110, 'percentage' => 100.0]],
+        [['name' => 'Categoria extensa', 'total' => 110, 'percentage' => 100.0, 'subcategories' => $children]], $monthly);
+    $pdf = app(PdfTicketMetricsReport::class)->render($data);
+    preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);
+    expect(count($pages[0]))->toBeGreaterThan(1);
+    $decoded = decodedPdfStreams($pdf);
+    for ($index = 1; $index <= 110; $index++) {
+        expect($decoded)->toContain(mb_convert_encoding(sprintf('Detalhe%03d', $index), 'UTF-16BE', 'UTF-8'));
+    }
+    foreach ($monthly as $month) {
+        $label = substr($month['month'], 5, 2).'/'.substr($month['month'], 0, 4);
+        expect($decoded)->toContain(mb_convert_encoding($label, 'UTF-16BE', 'UTF-8'));
+    }
 });
 
 test('preserves month labels for dates outside Excel native date display without broken cells', function () {

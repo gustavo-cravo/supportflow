@@ -2,8 +2,62 @@
 
 namespace Database\Seeders;
 
+use App\Enums\TicketStatus;
+
 final class SupportFlowDemoCatalog
 {
+    /** @return list<array{0: int, 1: int, 2: ?string, 3: ?string, 4: TicketStatus, 5?: int}> */
+    public static function validationTickets(): array
+    {
+        // Days before today, system index, classification keys, status and optional older ticket code.
+        return [
+            [0, 0, 'access', 'session', TicketStatus::Open, 9],
+            [0, 1, 'access', 'credentials', TicketStatus::InProgress, 15],
+            [0, 0, 'plate', 'missing', TicketStatus::Closed],
+            [1, 0, 'access', null, TicketStatus::Waiting],
+            [2, 1, 'access', 'session', TicketStatus::Open],
+            [4, 0, 'plate', 'timeout', TicketStatus::InProgress],
+            [7, 0, 'access', 'credentials', TicketStatus::Resolved],
+            [9, 1, 'access', 'blocked', TicketStatus::Waiting],
+            [12, 0, 'access', 'session', TicketStatus::Closed],
+            [15, 0, 'plate', null, TicketStatus::Open],
+            [18, 1, 'integration', 'queue', TicketStatus::Closed],
+            [22, 0, null, null, TicketStatus::Waiting],
+            [27, 1, 'integration', 'mapping', TicketStatus::Resolved],
+            [30, 0, 'plate', 'missing', TicketStatus::Closed],
+            [35, 1, 'access', 'session', TicketStatus::Open, 18],
+            [45, 0, 'integration', 'queue', TicketStatus::Closed],
+            [58, 0, null, null, TicketStatus::InProgress],
+            [65, 1, 'integration', null, TicketStatus::Waiting],
+            [75, 0, 'access', 'blocked', TicketStatus::Closed],
+            [88, 0, 'plate', 'timeout', TicketStatus::Resolved],
+            [105, 2, 'access', 'session', TicketStatus::Closed],
+            [130, 2, 'access', 'blocked', TicketStatus::Closed],
+            [200, 2, 'access', null, TicketStatus::Closed],
+            [400, 2, null, null, TicketStatus::Closed],
+        ];
+    }
+
+    /** @return array<string, array{name: string, systems: list<int>, subcategories: array<string, array{name: string, systems: list<int>}>}> */
+    public static function validationClassifications(): array
+    {
+        return [
+            'access' => ['name' => 'Falha de acesso', 'systems' => [0, 1, 2], 'subcategories' => [
+                'session' => ['name' => 'Sessão expirada', 'systems' => [0, 1, 2]],
+                'credentials' => ['name' => 'Credenciais inválidas', 'systems' => [0, 1]],
+                'blocked' => ['name' => 'Usuário bloqueado', 'systems' => [0, 1, 2]],
+            ]],
+            'plate' => ['name' => 'Erro na busca por placa', 'systems' => [0], 'subcategories' => [
+                'missing' => ['name' => 'Placa não encontrada', 'systems' => [0]],
+                'timeout' => ['name' => 'Tempo de consulta esgotado', 'systems' => [0]],
+            ]],
+            'integration' => ['name' => 'Integração de dados', 'systems' => [0, 1], 'subcategories' => [
+                'queue' => ['name' => 'Fila interrompida', 'systems' => [0, 1]],
+                'mapping' => ['name' => 'Mapeamento divergente', 'systems' => [0, 1]],
+            ]],
+        ];
+    }
+
     /** @return list<array{name: string, description: string, issues: list<array{title: string, description: string, resolution: string}>}> */
     public static function systems(): array
     {
