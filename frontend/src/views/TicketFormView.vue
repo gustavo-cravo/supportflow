@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ticketFields } from '@/config/resources'
+import { ticketFields, ticketClassificationFields } from '@/config/resources'
 import { api } from '@/services/api'
 import { initialValues, formPayload, validateFields } from '@/utils/forms'
 import { resolutionValues, resolutionPayload, validateResolution } from '@/utils/resolution'
@@ -11,12 +11,15 @@ import FormField from '@/components/FormField.vue'
 import PageHeading from '@/components/PageHeading.vue'
 import ResolutionFields from '@/components/ResolutionFields.vue'
 import StatePanel from '@/components/StatePanel.vue'
+import TicketClassificationFields from '@/components/TicketClassificationFields.vue'
 const route = useRoute(),
     router = useRouter(),
     { notify } = useNotifications()
 const editing = Boolean(route.params.id)
+const allFields = [...ticketFields, ...ticketClassificationFields]
+const classification = ref(null)
 const values = reactive({
-    ...initialValues(ticketFields),
+    ...initialValues(allFields),
     ...resolutionValues(),
     previous_ticket_id: Number(route.query.anterior) || null,
 })
@@ -46,7 +49,7 @@ async function load() {
         ).data
         Object.assign(
             values,
-            initialValues(ticketFields, record.value),
+            initialValues(allFields, record.value),
             resolutionValues(record.value),
         )
     } catch (exception) {
@@ -57,7 +60,11 @@ async function load() {
 }
 async function save() {
     if (busy.value) return
-    errors.value = { ...validateFields(fields.value, values), ...validateResolution(values) }
+    errors.value = {
+        ...validateFields(fields.value, values),
+        ...validateResolution(values),
+        ...classification.value?.validate(),
+    }
     error.value = ''
     if (Object.keys(errors.value).length) {
         error.value = 'Revise os campos destacados.'
@@ -65,7 +72,7 @@ async function save() {
     }
     busy.value = true
     try {
-        const payload = { ...formPayload(ticketFields, values), ...resolutionPayload(values) }
+        const payload = { ...formPayload(allFields, values), ...resolutionPayload(values) }
         const result = await (editing
             ? api.patch('support-tickets/' + route.params.id, payload)
             : api.post('support-tickets', payload))
@@ -110,6 +117,14 @@ onBeforeUnmount(() => controller.abort())
                     :field="field"
                     :errors="errors"
                     prefix="ticket"
+                />
+                <TicketClassificationFields
+                    ref="classification"
+                    v-model:category-id="values.problem_category_id"
+                    v-model:subcategory-id="values.problem_subcategory_id"
+                    :system-id="values.system_id"
+                    :record="record"
+                    :errors="errors"
                 />
             </fieldset>
             <p v-if="record?.system?.is_active === false" class="alert alert-info">

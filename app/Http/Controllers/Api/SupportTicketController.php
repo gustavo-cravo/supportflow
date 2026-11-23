@@ -19,7 +19,7 @@ class SupportTicketController extends Controller
 {
     public function index(ListRequest $request): AnonymousResourceCollection
     {
-        $query = SupportTicket::with(['system', 'contact', 'customer']);
+        $query = SupportTicket::with(['system', 'contact', 'customer', 'problemCategory.systems', 'problemSubcategory.systems', 'problemSubcategory.category']);
         foreach (['system_id', 'contact_id', 'customer_id', 'status'] as $field) {
             if ($request->filled($field)) {
                 $query->where($field, $request->input($field));
@@ -68,7 +68,7 @@ class SupportTicketController extends Controller
 
     public function related(ListRequest $request, SupportTicket $supportTicket): AnonymousResourceCollection
     {
-        $query = SupportTicket::with(['system', 'contact', 'customer'])
+        $query = SupportTicket::with(['system', 'contact', 'customer', 'problemCategory.systems', 'problemSubcategory.systems', 'problemSubcategory.category'])
             ->where(function ($query) use ($supportTicket) {
                 $query->where('previous_ticket_id', $supportTicket->getKey())
                     ->orWhere('id', $supportTicket->previous_ticket_id);
@@ -81,6 +81,7 @@ class SupportTicketController extends Controller
     {
         return new SupportTicketResource($ticket->refresh()->load([
             'system', 'contact', 'customer', 'previousTicket', 'followUpTickets', 'pendingTasks', 'reminders',
+            'problemCategory.systems', 'problemSubcategory.systems', 'problemSubcategory.category',
         ]));
     }
 }

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * @property CarbonInterface|null $verified_at
  * @property CarbonInterface|null $closed_at
  */
-#[Fillable(['system_id', 'contact_id', 'customer_id', 'previous_ticket_id', 'title', 'description', 'status', 'resolution', 'verification_source', 'verification_notes', 'verified_by', 'verified_at', 'closed_at'])]
+#[Fillable(['system_id', 'contact_id', 'customer_id', 'previous_ticket_id', 'problem_category_id', 'problem_subcategory_id', 'title', 'description', 'status', 'resolution', 'verification_source', 'verification_notes', 'verified_by', 'verified_at', 'closed_at'])]
 class SupportTicket extends Model
 {
     /** @var array<string, mixed> */
@@ -34,6 +34,18 @@ class SupportTicket extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /** @return BelongsTo<ProblemCategory, $this> */
+    public function problemCategory(): BelongsTo
+    {
+        return $this->belongsTo(ProblemCategory::class);
+    }
+
+    /** @return BelongsTo<ProblemSubcategory, $this> */
+    public function problemSubcategory(): BelongsTo
+    {
+        return $this->belongsTo(ProblemSubcategory::class);
     }
 
     /** @return BelongsTo<SupportTicket, $this> */

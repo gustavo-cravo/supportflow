@@ -250,6 +250,28 @@ onBeforeUnmount(() => controller.abort())
                             </dd>
                         </div>
                         <div>
+                            <dt>Categoria do problema</dt>
+                            <dd>
+                                {{ ticket.problem_category?.name || 'Não classificado'
+                                }}<small v-if="ticket.problem_category?.is_active === false">
+                                    · Inativa</small
+                                >
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Subcategoria do problema</dt>
+                            <dd>
+                                {{
+                                    ticket.problem_subcategory?.name ||
+                                    (ticket.problem_category
+                                        ? 'Não informada'
+                                        : 'Não classificado')
+                                }}<small v-if="ticket.problem_subcategory?.is_active === false">
+                                    · Inativa</small
+                                >
+                            </dd>
+                        </div>
+                        <div>
                             <dt>Cliente</dt>
                             <dd>
                                 <button

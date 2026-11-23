@@ -20,6 +20,8 @@ class SaveSupportTicket
                 ? new SupportTicket
                 : SupportTicket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
 
+            (new ValidateTicketClassification)->execute($ticket, $data);
+
             $systemId = (int) ($data['system_id'] ?? $ticket->system_id);
             if (! $ticket->exists || $systemId !== $ticket->system_id) {
                 $system = System::query()->lockForUpdate()->findOrFail($systemId);

@@ -2,6 +2,12 @@ import { createRouter, createWebHistory } from 'vue-router'
 
 export const routes = [
     {
+        path: '/categorias-problemas/:id(\\d+)?',
+        name: 'problem-categories',
+        component: () => import('@/views/ProblemCategoriesView.vue'),
+        meta: { title: 'Categorias de Problemas' },
+    },
+    {
         path: '/',
         name: 'dashboard',
         component: () => import('@/views/DashboardView.vue'),

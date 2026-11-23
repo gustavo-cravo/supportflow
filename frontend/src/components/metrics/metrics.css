@@ -1,0 +1,215 @@
+.metrics-dashboard {
+    min-width: 0;
+}
+.metrics-dashboard > div > .panel,
+.metrics-filters {
+    margin-bottom: 22px;
+}
+.metrics-filter-form {
+    padding: 0 22px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: 14px;
+}
+.metrics-filter-form .filter-field {
+    flex: 1 1 185px;
+    max-width: none;
+    min-width: 0;
+}
+.metrics-filter-note {
+    flex-basis: 100%;
+    font-size: 11px;
+}
+.metrics-caption {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 4px;
+}
+.metrics-applied-context {
+    color: var(--muted);
+    font-size: 11px;
+    margin: 20px 0 13px;
+}
+.metrics-indicators.metric-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.metrics-indicators .metric-card:hover {
+    transform: none;
+    border-color: #e7ebf2;
+}
+.metrics-bars {
+    list-style: none;
+    padding: 0 22px 22px;
+    margin: 0;
+    max-height: 470px;
+    overflow-y: auto;
+}
+.metrics-bars li + li {
+    margin-top: 18px;
+}
+.metrics-bar-label {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 7px;
+    font-size: 12px;
+}
+.metrics-bar-label > span {
+    overflow-wrap: anywhere;
+}
+.metrics-bar-label small {
+    margin-left: 5px;
+    font-size: 10px;
+}
+.metrics-bar-track {
+    height: 9px;
+    background: #edf3ff;
+    border-radius: 3px;
+    overflow: hidden;
+}
+.metrics-bar-track > span {
+    display: block;
+    background: var(--blue);
+    height: 100%;
+    border-radius: inherit;
+}
+.metrics-line-scroll {
+    overflow-x: auto;
+    margin: 0 22px;
+}
+.metrics-line {
+    display: block;
+    width: 100%;
+    height: auto;
+    max-height: 350px;
+}
+.metrics-chart-grid {
+    stroke: var(--line);
+    stroke-width: 1;
+}
+.metrics-chart-line {
+    fill: none;
+    stroke: var(--blue);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+}
+.metrics-chart-point {
+    fill: white;
+    stroke: var(--blue);
+    stroke-width: 2;
+}
+.metrics-axis-label {
+    fill: #758096;
+    font-size: 11px;
+}
+.metrics-point-label {
+    fill: #202b40;
+    font-size: 12px;
+    font-weight: 600;
+}
+.metrics-chart-note,
+.metrics-chart-data {
+    margin: 12px 22px 20px;
+    font-size: 11px;
+}
+.metrics-chart-data summary {
+    cursor: pointer;
+    color: var(--blue);
+    padding: 4px 0;
+}
+.metrics-chart-data .table-scroll {
+    max-height: 330px;
+    overflow: auto;
+    margin-top: 10px;
+}
+.metrics-dashboard th {
+    font-weight: 600;
+}
+.metrics-dashboard td,
+.metrics-dashboard th {
+    white-space: normal;
+}
+.metrics-ranking {
+    min-width: 560px;
+}
+.metrics-row-selected {
+    background: #f3f7ff;
+}
+.metrics-category-button {
+    text-align: left;
+}
+.metrics-inactive {
+    display: block;
+    font-size: 10px;
+    font-weight: 400;
+    margin-top: 4px;
+}
+.metrics-related {
+    padding: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+}
+.metrics-modal-context {
+    color: var(--muted);
+    font-size: 12px;
+    margin-bottom: 18px;
+    overflow-wrap: anywhere;
+}
+.metrics-tickets table {
+    min-width: 610px;
+}
+.metrics-tickets .table-link {
+    display: block;
+    min-width: 160px;
+    max-width: 270px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+}
+.metrics-tickets .pagination {
+    padding-inline: 0;
+}
+.metrics-validation {
+    font-size: 12px;
+    padding: 12px 25px;
+    text-align: left;
+}
+@media (max-width: 800px) {
+    .metrics-indicators.metric-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 520px) {
+    .metrics-filter-form {
+        padding: 0 16px 18px;
+    }
+    .metrics-filter-form .filter-field {
+        flex-basis: 100%;
+    }
+    .metrics-indicators .metric-card:last-child {
+        grid-column: auto;
+        display: flex;
+        padding: 19px;
+        gap: 0;
+    }
+    .metrics-indicators .metric-card:last-child .metric-top {
+        margin: 0 0 14px;
+    }
+    .metrics-indicators .metric-card:last-child > span {
+        margin-top: 9px;
+    }
+    .metrics-related {
+        flex-direction: column;
+        align-items: flex-start;
+        padding: 18px 16px;
+    }
+    .metrics-line-scroll {
+        margin-inline: 16px;
+    }
+    .metrics-bars {
+        padding-inline: 16px;
+    }
+}

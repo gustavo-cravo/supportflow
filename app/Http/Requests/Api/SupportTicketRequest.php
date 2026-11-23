@@ -15,6 +15,8 @@ class SupportTicketRequest extends ApiRequest
             'contact_id' => [...$this->presence(), 'integer', 'exists:contacts,id'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
             'previous_ticket_id' => ['nullable', 'integer', 'exists:support_tickets,id'],
+            'problem_category_id' => ['nullable', 'integer', 'exists:problem_categories,id'],
+            'problem_subcategory_id' => ['nullable', 'integer', 'exists:problem_subcategories,id'],
             'title' => [...$this->presence(), 'string', 'max:255'],
             'description' => [...$this->presence(), 'string', 'max:16000'],
             'status' => ['sometimes', $this->isMethod('POST') ? Rule::in(['open']) : Rule::enum(TicketStatus::class)],
