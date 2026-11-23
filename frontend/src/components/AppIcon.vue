@@ -23,6 +23,7 @@ const paths = {
     back: ['M19 12H5M11 6l-6 6 6 6'],
     chevron: ['M9 5l7 7-7 7'],
     edit: ['m16 3 5 5-12 12-6 1 1-6zM14 5l5 5'],
+    copy: ['M9 9h12v12H9zM5 15H3V3h12v2'],
     refresh: ['M20 7V3l-4 4M20 7a9 9 0 1 0 1 9'],
     clock: ['M12 8v4l3 2', 'M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0'],
     calendar: ['M4 5h16v16H4zM8 3v4M16 3v4M4 10h16'],
