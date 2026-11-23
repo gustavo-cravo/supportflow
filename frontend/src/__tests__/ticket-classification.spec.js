@@ -370,7 +370,7 @@ describe('scoped relation lookup races', () => {
         wrapper = mount(RelationSelect, {
             props: { id: 'lookup', endpoint: 'problem-categories', params: { system_id: 1 } },
         })
-        wrapper.get('#lookup').trigger('click')
+        await wrapper.get('#lookup').trigger('click')
         await flushPromises()
         const firstSignal = get.mock.calls[0][2]
         await wrapper.setProps({ params: { system_id: 2 } })
@@ -401,7 +401,7 @@ describe('scoped relation lookup races', () => {
         wrapper = mount(RelationSelect, {
             props: { id: 'lookup', endpoint: 'problem-subcategories' },
         })
-        wrapper.get('#lookup').trigger('click')
+        await wrapper.get('#lookup').trigger('click')
         await flushPromises()
         const signal = get.mock.calls[0][2]
         await wrapper.setProps({ disabled: true })
