@@ -19,6 +19,22 @@ class ListRequest extends ApiRequest
         if ($this->routeIs('systems.*')) {
             $rules += ['name' => ['nullable', 'string', 'max:255'], 'is_active' => ['sometimes', 'boolean']];
         }
+        if ($this->routeIs('problem-categories.*', 'problem-subcategories.*')) {
+            $rules += [
+                'selectable' => ['sometimes', 'boolean'],
+                'is_active' => ['sometimes', 'boolean'],
+                'system_id' => ['nullable', 'integer', 'min:1'],
+            ];
+            if ($this->boolean('selectable')) {
+                $rules['system_id'] = ['required', 'integer', 'min:1'];
+                if ($this->routeIs('problem-subcategories.*')) {
+                    $rules['problem_category_id'] = ['required', 'integer', 'min:1'];
+                }
+            }
+        }
+        if ($this->routeIs('problem-subcategories.*')) {
+            $rules += ['problem_category_id' => ['nullable', 'integer', 'min:1']];
+        }
         if ($this->routeIs('support-tickets.*')) {
             $rules += [
                 'system_id' => ['nullable', 'integer', 'min:1'],

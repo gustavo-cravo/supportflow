@@ -11,8 +11,12 @@ const props = defineProps({
     id: String,
     invalid: Boolean,
     required: Boolean,
+    disabled: Boolean,
+    initialRecord: Object,
+    emptyMessage: { type: String, default: 'Nenhum registro encontrado.' },
+    clearLabel: { type: String, default: 'Limpar seleção' },
 })
-const emit = defineEmits(['update:modelValue'])
+const emit = defineEmits(['update:modelValue', 'select'])
 const open = ref(false),
     search = ref(''),
     rows = ref([]),
@@ -32,6 +36,7 @@ const label = (record) =>
         : ''
 const visible = computed(() => rows.value.filter((row) => row.id !== props.excludeId))
 async function load(page = 1) {
+    if (props.disabled) return
     controller?.abort()
     controller = new AbortController()
     const current = ++version
@@ -54,6 +59,7 @@ async function load(page = 1) {
     }
 }
 async function toggle() {
+    if (props.disabled) return
     open.value = !open.value
     if (open.value) {
         search.value = ''
@@ -69,12 +75,14 @@ function loadMore() {
 }
 function select(row) {
     selected.value = row
+    emit('select', row)
     emit('update:modelValue', row.id)
     open.value = false
     document.getElementById(props.id)?.focus()
 }
 function clear() {
     selected.value = null
+    emit('select', null)
     emit('update:modelValue', null)
     open.value = false
 }
@@ -102,10 +110,14 @@ function onKey(event) {
     }
 }
 watch(
-    () => props.modelValue,
-    async (value) => {
+    () => [props.modelValue, props.initialRecord],
+    async ([value]) => {
         if (!value) {
             selected.value = null
+            return
+        }
+        if (props.initialRecord && String(props.initialRecord.id) === String(value)) {
+            selected.value = props.initialRecord
             return
         }
         if (String(selected.value?.id) === String(value)) return
@@ -122,9 +134,26 @@ watch(
 watch(
     () => props.params,
     () => {
+        clearTimeout(timer)
+        version++
+        controller?.abort()
+        rows.value = []
+        meta.value = null
+        loading.value = false
         if (open.value) load()
     },
     { deep: true },
+)
+watch(
+    () => props.disabled,
+    (disabled) => {
+        if (!disabled) return
+        open.value = false
+        version++
+        controller?.abort()
+        loading.value = false
+        clearTimeout(timer)
+    },
 )
 onBeforeUnmount(() => {
     clearTimeout(timer)
@@ -150,6 +179,7 @@ onBeforeUnmount(() => {
                 :aria-expanded="open"
                 :aria-invalid="invalid"
                 :aria-required="required"
+                :disabled="disabled"
                 :aria-describedby="invalid ? id + '-error' : undefined"
                 aria-haspopup="listbox"
                 @click="toggle"
@@ -162,7 +192,8 @@ onBeforeUnmount(() => {
                 v-if="modelValue"
                 class="icon-button relation-clear"
                 type="button"
-                aria-label="Limpar seleção"
+                :aria-label="clearLabel"
+                :disabled="disabled"
                 @click="clear"
             >
                 <AppIcon name="close" :size="14" />
@@ -208,7 +239,7 @@ onBeforeUnmount(() => {
                 </li>
             </ul>
             <p v-if="!loading && !error && !visible.length" class="lookup-hint">
-                Nenhum registro encontrado.
+                {{ emptyMessage }}
             </p>
             <button
                 v-if="meta && meta.current_page < meta.last_page"

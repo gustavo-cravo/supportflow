@@ -2,11 +2,13 @@
 import { onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/services/api'
+import { resources } from '@/config/resources'
 import { displayStatus, formatDate, ticketStatuses } from '@/utils/format'
 import { useNotifications } from '@/composables/useNotifications'
 import AppIcon from '@/components/AppIcon.vue'
 import CloseTicketModal from '@/components/CloseTicketModal.vue'
 import PageHeading from '@/components/PageHeading.vue'
+import RecordDetail from '@/components/RecordDetail.vue'
 import StatePanel from '@/components/StatePanel.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
 const route = useRoute(),
@@ -16,7 +18,8 @@ const ticket = ref(null),
     error = ref(''),
     status = ref(''),
     busy = ref(false),
-    closing = ref(false)
+    closing = ref(false),
+    quickView = ref('')
 const controller = new AbortController()
 async function load() {
     loading.value = true
@@ -234,11 +237,55 @@ onBeforeUnmount(() => controller.abort())
                         </div>
                         <div>
                             <dt>Contato</dt>
-                            <dd>{{ ticket.contact.name }}</dd>
+                            <dd>
+                                <button
+                                    type="button"
+                                    class="text-button registration-link"
+                                    aria-haspopup="dialog"
+                                    :aria-label="'Visualizar contato ' + ticket.contact.name"
+                                    @click="quickView = 'contact'"
+                                >
+                                    {{ ticket.contact.name }}
+                                </button>
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Categoria do problema</dt>
+                            <dd>
+                                {{ ticket.problem_category?.name || 'Não classificado'
+                                }}<small v-if="ticket.problem_category?.is_active === false">
+                                    · Inativa</small
+                                >
+                            </dd>
+                        </div>
+                        <div>
+                            <dt>Subcategoria do problema</dt>
+                            <dd>
+                                {{
+                                    ticket.problem_subcategory?.name ||
+                                    (ticket.problem_category
+                                        ? 'Não informada'
+                                        : 'Não classificado')
+                                }}<small v-if="ticket.problem_subcategory?.is_active === false">
+                                    · Inativa</small
+                                >
+                            </dd>
                         </div>
                         <div>
                             <dt>Cliente</dt>
-                            <dd>{{ ticket.customer?.name || 'Não associado' }}</dd>
+                            <dd>
+                                <button
+                                    v-if="ticket.customer"
+                                    type="button"
+                                    class="text-button registration-link"
+                                    aria-haspopup="dialog"
+                                    :aria-label="'Visualizar cliente ' + ticket.customer.name"
+                                    @click="quickView = 'customer'"
+                                >
+                                    {{ ticket.customer.name }}
+                                </button>
+                                <span v-else>Não associado</span>
+                            </dd>
                         </div>
                         <div>
                             <dt>Última atualização</dt>
@@ -283,6 +330,12 @@ onBeforeUnmount(() => controller.abort())
                 </section>
             </aside>
         </div>
+        <RecordDetail
+            v-if="quickView"
+            :config="resources[quickView === 'contact' ? 'contacts' : 'customers']"
+            :record="ticket[quickView]"
+            read-only
+            @close="quickView = ''" />
         <CloseTicketModal
             v-if="closing"
             :ticket="ticket"
@@ -290,3 +343,14 @@ onBeforeUnmount(() => controller.abort())
             @closed="onClosed"
     /></template>
 </template>
+<style scoped>
+.registration-link {
+    padding: 0;
+    font: inherit;
+    text-align: left;
+    overflow-wrap: anywhere;
+}
+.registration-link:hover {
+    text-decoration: underline;
+}
+</style>

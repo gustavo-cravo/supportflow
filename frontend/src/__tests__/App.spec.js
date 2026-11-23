@@ -16,7 +16,10 @@ describe('App', () => {
         await flushPromises()
         expect(wrapper.text()).toContain('SupportFlow')
         expect(wrapper.find('h1').text()).toBe('Contatos')
-        expect(wrapper.findAll('nav[aria-label="Navegação principal"] a')).toHaveLength(8)
+        expect(wrapper.findAll('nav[aria-label="Navegação principal"] a')).toHaveLength(9)
+        expect(wrapper.get('nav a[href="/categorias-problemas"]').text()).toBe(
+            'Categorias de Problemas',
+        )
         expect(api.get).toHaveBeenCalledWith('contacts', {}, expect.any(AbortSignal))
         wrapper.unmount()
     })
