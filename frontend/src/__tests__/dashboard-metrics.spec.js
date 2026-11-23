@@ -717,12 +717,10 @@ describe('loading, empty and failure states', () => {
 describe('statistical report export', () => {
     let download, save
     beforeEach(() => {
-        download = vi
-            .spyOn(api, 'download')
-            .mockResolvedValue({
-                blob: new Blob(['test']),
-                filename: 'supportflow_relatorio_2026-11-23.pdf',
-            })
+        download = vi.spyOn(api, 'download').mockResolvedValue({
+            blob: new Blob(['test']),
+            filename: 'supportflow_relatorio_2026-11-23.pdf',
+        })
         save = vi.spyOn(downloads, 'saveDownload').mockImplementation(() => {})
     })
     const openExport = async () => {

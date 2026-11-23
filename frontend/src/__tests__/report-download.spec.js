@@ -36,25 +36,21 @@ describe('binary API downloads', () => {
         await expect(api.download('metrics/export')).rejects.toMatchObject({ status: 502 })
         vi.stubGlobal(
             'fetch',
-            vi
-                .fn()
-                .mockResolvedValue({
-                    ...fileResponse('application/pdf', 'pdf'),
-                    blob: async () => new Blob([]),
-                }),
+            vi.fn().mockResolvedValue({
+                ...fileResponse('application/pdf', 'pdf'),
+                blob: async () => new Blob([]),
+            }),
         )
         await expect(api.download('metrics/export')).rejects.toMatchObject({ status: 502 })
     })
     it('retains API JSON validation errors on failed binary responses', async () => {
         vi.stubGlobal(
             'fetch',
-            vi
-                .fn()
-                .mockResolvedValue({
-                    ok: false,
-                    status: 422,
-                    json: async () => ({ errors: { period: ['Período inválido.'] } }),
-                }),
+            vi.fn().mockResolvedValue({
+                ok: false,
+                status: 422,
+                json: async () => ({ errors: { period: ['Período inválido.'] } }),
+            }),
         )
         await expect(api.download('metrics/export')).rejects.toMatchObject({
             status: 422,
