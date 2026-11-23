@@ -4,7 +4,7 @@
 
 Antes da interrupção já estavam escritos o endpoint, a validação, a estrutura compartilhada de dados consolidados, os geradores PDF/XLSX, o template PDF, o modal, o download binário e os testes específicos. As dependências estavam declaradas no Composer e disponíveis no autoload na retomada. Essa implementação foi preservada.
 
-Na retomada foram executados os testes novos e de regressão, a análise estática, a geração e inspeção dos documentos e os downloads reais no navegador. A revisão visual identificou tabelas curtas e grupos de subcategorias que podiam ser separados entre páginas; o template passou a mantê-los juntos quando couberem em uma página. Tabelas maiores continuam paginadas, com cabeçalhos e linhas legíveis. Também foram organizados os testes e esta documentação.
+Na retomada foram executados os testes novos e de regressão, a análise estática, a geração e inspeção dos documentos e os downloads reais no navegador. Também foram organizados os testes e esta documentação. A reformulação visual posterior do PDF, descrita abaixo, substituiu a proteção de seções inteiras por paginação contínua.
 
 ## Como utilizar
 
@@ -60,7 +60,57 @@ As estatísticas são consultadas novamente no momento da geração. Se os regis
 
 O PDF contém identificação do SupportFlow, título, filtros, período e data de geração; resumo dos cinco indicadores; distribuições por sistema e categoria; subcategorias agrupadas por categoria; e evolução mensal em gráfico e tabela.
 
-O documento é A4, utiliza a cor azul do projeto, fonte Unicode incorporada, margens de impressão, tabelas com cabeçalhos, grupos organizados, rodapé e numeração de páginas. Nomes são escapados pelo Blade. O gráfico usa somente os agregados mensais recebidos e é dividido em blocos de até 12 meses, mantendo os valores em tabelas. Meses zerados seguem a resposta do serviço, sem preenchimento estatístico independente.
+O documento é A4 retrato, utiliza a cor azul do projeto, fonte Unicode incorporada, margens de impressão, tabelas com cabeçalhos, rodapé e numeração de páginas. Nomes são escapados pelo Blade. O gráfico usa somente os agregados mensais recebidos e é dividido em blocos de até 12 meses, mantendo os valores em tabelas. Meses zerados seguem a resposta do serviço, sem preenchimento estatístico independente.
+
+### Reformulação visual e paginação
+
+O cabeçalho apresenta marca, título, emissão e período sem capa. Os outros quatro filtros ocupam duas colunas; o fuso `America/Sao_Paulo` aparece discretamente no rodapé. Os cinco indicadores formam uma faixa compacta, com números destacados em azul-escuro.
+
+Não há quebras obrigatórias entre seções nem proteção de seções inteiras contra paginação. Títulos e cabeçalhos ficam próximos ao conteúdo; linhas não são divididas e os cabeçalhos são repetidos nas continuações das tabelas. A proteção do cabeçalho também é aplicada à sua última linha, pois o Dompdf não usa a propriedade do grupo `thead` para impedir a quebra antes da primeira linha de dados.
+
+As distribuições por sistema e categoria compartilham duas colunas somente quando **ambas têm até cinco linhas e nomes de até 48 caracteres**. São limites de apresentação para uma região curta e indivisível, não limites de resultados: tabelas maiores ou nomes mais longos aparecem empilhados e paginam naturalmente. Isso respeita a limitação do Dompdf de não dividir células de uma tabela externa entre páginas.
+
+As subcategorias aparecem em uma tabela contínua, com categoria, subcategoria, quantidade e percentual na categoria. Os totais de cada categoria permanecem na distribuição anterior, evitando sua repetição em cada linha do detalhamento. O gráfico mensal tem altura compacta. Com até quatro meses, gráfico e tabela aparecem lado a lado; nos demais blocos, a tabela apresenta até três pares mês/quantidade por linha, em ordem cronológica da esquerda para a direita. Cada gráfico permanece próximo aos seus valores, sem manter toda a seção de evolução indivisível. Essas mudanças apenas reorganizam os agregados recebidos.
+
+O PDF usa HTML/CSS compatível com o Dompdf, sem flexbox, grid ou dependências novas. Somente indicadores, pequenas tabelas mensais e regiões curtas lado a lado permanecem indivisíveis. Tabelas extensas fluem pelo documento sem limite artificial de páginas. Nomes muito longos são quebrados dentro das células.
+
+A reformulação é exclusiva do template PDF, de suas tabelas parciais e das dimensões do gráfico/rodapé no gerador PDF. Serviços estatísticos, filtros, endpoints, Dashboard, dados compartilhados e gerador Excel permanecem iguais.
+
+Arquivos desta revisão:
+
+- `app/Services/Reports/PdfTicketMetricsReport.php`: dimensões do SVG e rodapé.
+- `resources/views/reports/ticket-metrics.blade.php`: estrutura visual, estilos e regras de paginação.
+- `resources/views/reports/partials/metrics-distribution.blade.php`: tabela reutilizada nas distribuições, empilhada ou compacta.
+- `resources/views/reports/partials/metrics-monthly-values.blade.php`: valores mensais em tabela vertical ou pares de colunas.
+- `tests/Feature/Api/TicketMetricsExportTest.php`: cenários reais de PDF pequeno, vazio e extenso, com preservação de linhas e meses.
+- `docs/statistical-reports.md`: organização e validação do layout.
+
+### Validação da reformulação
+
+Os exemplos foram gerados exclusivamente com agregados fictícios ou consultas à base SQLite isolada de testes. Todos foram reabertos com pypdf/pdfplumber, renderizados com Poppler e inspecionados visualmente, incluindo as páginas de continuação. A conferência automática verificou A4 retrato, rótulos completos, valores mensais legíveis no gráfico e na tabela, limites das margens e separação do rodapé.
+
+| Cenário | Páginas |
+| --- | ---: |
+| 2 atendimentos, 2 sistemas, 2 categorias e 2 meses | 1 |
+| Sem resultados, com meses zerados | 1 |
+| 18 sistemas, 45 categorias e 90 subcategorias, com nomes extensos | 13 |
+| Uma categoria com 110 subcategorias e 36 meses | 8 |
+| Dois atendimentos com filtros textuais longos | 1 |
+| Nomes de 255 caracteres sem espaços | 2 |
+| Base isolada: 50 atendimentos, todo o histórico | 2 |
+| Base isolada: 50 atendimentos, últimos 6 meses | 2 |
+| Base isolada: 8 atendimentos, este mês | 1 |
+
+São **9 cenários e 31 páginas**. O exemplo isolado anterior de 50 atendimentos tinha quatro páginas; com os mesmos totais, a nova apresentação utiliza duas. A quantidade de páginas continua dependendo do conteúdo, sem teto ou truncamento de resultados. Os exemplos, JSONs de referência, imagens e verificações estão em `storage/framework/testing/evidence/pdf-layout/`, fora do versionamento.
+
+Os testes adicionados e atualizados verificam um relatório real de dois atendimentos em uma página, A4 retrato, grupos históricos e dois meses; preservação de 110 subcategorias e 36 meses em várias páginas; e relatório vazio em uma página. Os testes existentes de filtros, totais, ausência de informações individuais, consultas somente de leitura e exportação XLSX continuam sendo executados. O comparativo com o Dashboard utiliza os mesmos resultados da API de métricas.
+
+Resultados finais desta revisão:
+
+- `php artisan test --compact`: **318 testes e 3.980 verificações, aprovados**. Inclui os **46 testes de exportação** e a regressão dos módulos existentes.
+- PHPStan: **sem erros**; Pint e `git diff --check`: aprovados.
+- Leitura independente e inspeção visual dos nove PDFs: nenhum rótulo ausente, texto fora das margens ou sobreposição com o rodapé; datas dos gráficos continuam separadas e legíveis mesmo com 12 meses por bloco.
+- Comparação dos registros da base isolada: **11 tabelas e 132 registros inalterados**. Nenhum banco de dados real foi utilizado ou modificado.
 
 ## Arquivo Excel
 

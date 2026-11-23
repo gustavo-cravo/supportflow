@@ -2,47 +2,82 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <title>{{ \App\Support\TicketMetricsReportData::TITLE }}</title>
+    <title>Relatório Estatístico de Atendimentos | SupportFlow</title>
     <style>
-        @page { margin: 38pt 40pt 52pt; }
-        body { font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; color: #202b40; line-height: 1.45; }
-        .brand { font-size: 22pt; font-weight: bold; color: #245cda; margin: 0 0 15pt; }
-        h1 { font-size: 20pt; line-height: 1.25; margin: 0 0 9pt; }
-        h2 { font-size: 12pt; margin: 22pt 0 10pt; padding-bottom: 7pt; border-bottom: 1pt solid #e9edf4; page-break-after: avoid; }
-        p { margin: 0 0 10pt; }
-        .muted { color: #758096; font-size: 8pt; }
-        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 12pt; }
-        thead { display: table-header-group; }
+        @page { margin: 30pt 36pt 44pt; }
+        body { margin: 0; font-family: 'DejaVu Sans', sans-serif; font-size: 9pt; color: #28364a; line-height: 1.3; }
+        h1 { font-size: 16pt; line-height: 1.2; color: #163861; margin: 0 0 4pt; }
+        h2 { font-size: 10.5pt; color: #163861; margin: 9pt 0 5pt; padding-bottom: 4pt; border-bottom: 0.6pt solid #dbe4ef; page-break-after: avoid; }
+        p { margin: 0 0 6pt; }
+        .muted { color: #64748b; font-size: 8pt; }
+        .intro { margin-bottom: 5pt; line-height: 1.2; }
+        table { width: 100%; border-collapse: collapse; table-layout: fixed; margin-bottom: 4pt; }
+        thead { display: table-header-group; page-break-after: avoid; }
+        thead tr { page-break-after: avoid; }
         tr { page-break-inside: avoid; }
-        th, td { padding: 8pt; border-bottom: 0.5pt solid #e9edf4; text-align: left; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
-        th { background: #edf3ff; color: #245cda; font-size: 8pt; font-weight: bold; }
-        tbody tr:nth-child(even) td { background: #f8faff; }
+        th, td { padding: 4pt 7pt; border-bottom: 0.5pt solid #e5ebf2; text-align: left; vertical-align: top; overflow-wrap: break-word; word-wrap: break-word; }
+        th { background: #edf3fa; color: #163861; font-size: 8pt; font-weight: bold; }
+        tbody tr:nth-child(even) td { background: #f8fafc; }
         .number { text-align: right; width: 19%; }
-        .criteria { margin: 17pt 0; }
-        .criteria th { width: 25%; background: #f6f8fc; color: #758096; }
-        .criteria td { font-size: 8pt; }
-        .cards { margin-bottom: 18pt; }
-        .cards td { width: 20%; padding: 10pt 6pt; background: #f6f8fc; border: 3pt solid white; }
-        .cards strong { font-size: 22pt; color: #245cda; display: block; }
-        .cards span { font-size: 8pt; color: #758096; }
-        .group-title { background: #f6f8fc; color: #202b40; font-size: 10pt; }
-        .empty { padding: 15pt; background: #f6f8fc; color: #758096; }
-        .new-page { page-break-before: always; }
-        .monthly-block { page-break-inside: avoid; margin-bottom: 15pt; }
-        .monthly-block img { width: 100%; height: 150pt; }
-        .distribution { page-break-inside: avoid; }
+        .masthead { margin-bottom: 4pt; }
+        .masthead td { padding: 0; border: 0; background: white; vertical-align: middle; line-height: 1.1; }
+        .brand { font-size: 14pt; font-weight: bold; color: #245cda; }
+        .issued { text-align: right; font-size: 8pt; color: #64748b; }
+        .criteria td { width: 50%; background: #f8fafc; font-size: 8.5pt; line-height: 1.15; padding: 4pt 8pt; }
+        .criteria strong { display: block; font-size: 7.5pt; color: #64748b; margin-bottom: 1pt; }
+        .cards { page-break-inside: avoid; }
+        .cards td { width: 20%; padding: 5pt; background: #edf3fa; border: 2pt solid white; line-height: 1.15; }
+        .cards strong { font-size: 19pt; line-height: 1.1; color: #163861; display: block; margin-bottom: 3pt; }
+        .cards span { font-size: 8pt; color: #475569; }
+        .distributions > tbody > tr > td { padding: 0; border: 0; background: white; }
+        .distributions .spacer { width: 4%; }
+        .distributions .column { width: 48%; }
+        .compact { font-size: 8.5pt; }
+        .compact .number { width: 23%; }
+        .category { width: 34%; }
+        .subcategory { width: 38%; }
+        .subcategories .number { width: 14%; }
+        .empty { padding: 7pt 9pt; background: #f8fafc; color: #64748b; font-size: 8.5pt; }
+        .section-note { page-break-after: avoid; }
+        .monthly-chart { margin: 5pt 0; page-break-inside: avoid; page-break-after: avoid; }
+        .monthly-chart img { display: block; width: 100%; height: 88pt; }
+        .monthly-values { font-size: 8.5pt; margin-bottom: 9pt; page-break-inside: avoid; }
+        .monthly-values th, .monthly-values td { padding: 4pt 7pt; }
+        .monthly-layout > tbody > tr > td { padding: 0; border: 0; background: white; vertical-align: middle; }
+        .monthly-layout .plot { width: 62%; }
+        .monthly-layout .spacer { width: 3%; }
+        .monthly-layout .values { width: 35%; }
+        .monthly-layout img { display: block; width: 100%; height: 70pt; }
+        .monthly-layout.single-month img { height: 50pt; }
+        .monthly-layout .number { width: 50%; }
     </style>
 </head>
 <body>
-    <div class="brand">SupportFlow</div>
-    <h1>{{ \App\Support\TicketMetricsReportData::TITLE }}</h1>
-    <p class="muted">Gerado em {{ $report->generatedAt->format('d/m/Y \à\s H:i') }} - Horário de Brasília</p>
+    @php
+        $criteria = collect($report->criteria);
+        $period = $criteria->firstWhere('label', 'Período analisado');
+        $filters = $criteria->reject(fn ($criterion) => in_array($criterion['label'], ['Período analisado', 'Fuso horário']))->values();
+        // Only short tables share a row: Dompdf cannot paginate an outer table cell.
+        $compactDistributions = count($report->systems) <= 5 && count($report->categories) <= 5
+            && collect(array_merge($report->systems, $report->categories))->every(fn ($row) => mb_strlen($row['name']) <= 48);
+    @endphp
+    <table class="masthead"><tr>
+        <td class="brand">SupportFlow</td>
+        <td class="issued">Emitido em {{ $report->generatedAt->format('d/m/Y \à\s H:i') }}</td>
+    </tr></table>
+    <h1>Relatório Estatístico de Atendimentos</h1>
+    <p class="muted intro"><strong>Período analisado:</strong> {{ $period['value'] ?? '' }}</p>
     <table class="criteria"><tbody>
-        @foreach ($report->criteria as $criterion)
-            <tr><th>{{ $criterion['label'] }}</th><td>{{ $criterion['value'] }}</td></tr>
+        @foreach ($filters->chunk(2) as $pair)
+            <tr>
+                @foreach ($pair as $criterion)
+                    <td><strong>{{ $criterion['label'] }}</strong>{{ $criterion['value'] }}</td>
+                @endforeach
+                @if ($pair->count() === 1)<td></td>@endif
+            </tr>
         @endforeach
     </tbody></table>
-    <h2>1. Resumo geral</h2>
+    <h2>Resumo geral</h2>
     <table class="cards"><tr>
         @foreach (['total' => 'Total de atendimentos', 'closed' => 'Encerrados', 'not_closed' => 'Não encerrados', 'systems_count' => 'Sistemas com atendimentos', 'unclassified' => 'Sem classificação'] as $key => $label)
             <td><strong>{{ number_format($report->summary[$key], 0, ',', '.') }}</strong><span>{{ $label }}</span></td>
@@ -51,55 +86,47 @@
     @if ($report->summary['total'] === 0)
         <p class="empty">Nenhum atendimento encontrado para os filtros selecionados.</p>
     @endif
-    <div class="distribution">
-    <h2>2. Distribuição por sistema</h2>
-    <table><thead><tr><th>Sistema</th><th class="number">Atendimentos</th><th class="number">Participação</th></tr></thead><tbody>
-        @forelse ($report->systems as $row)
-            <tr><td>{{ $row['name'] }}</td><td class="number">{{ number_format($row['total'], 0, ',', '.') }}</td><td class="number">{{ number_format($row['percentage'], 2, ',', '.') }}%</td></tr>
-        @empty
-            <tr><td colspan="3">Sem ocorrências no período.</td></tr>
-        @endforelse
-    </tbody></table>
-    </div>
-    <div class="distribution">
-    <h2>3. Distribuição por categoria</h2>
-    <table><thead><tr><th>Categoria</th><th class="number">Ocorrências</th><th class="number">Participação</th></tr></thead><tbody>
-        @forelse ($report->categories as $row)
-            <tr><td>{{ $row['name'] }}</td><td class="number">{{ number_format($row['total'], 0, ',', '.') }}</td><td class="number">{{ number_format($row['percentage'], 2, ',', '.') }}%</td></tr>
-        @empty
-            <tr><td colspan="3">Sem ocorrências no período.</td></tr>
-        @endforelse
-    </tbody></table>
-    </div>
-    <div class="new-page"></div>
-    <h2>4. Distribuição por subcategoria</h2>
-    <p class="muted">Participação calculada dentro de cada categoria, respeitando todos os filtros.</p>
-    @forelse ($report->categories as $category)
-        <div class="distribution">
-        <table><colgroup><col style="width: 62%"><col style="width: 19%"><col style="width: 19%"></colgroup><thead>
-            <tr><th colspan="3" class="group-title">{{ $category['name'] }} - Total: {{ number_format($category['total'], 0, ',', '.') }}</th></tr>
-            <tr><th>Subcategoria</th><th class="number">Ocorrências</th><th class="number">Na categoria</th></tr>
-        </thead><tbody>
+    @if ($compactDistributions)
+        <table class="distributions"><tbody><tr>
+            <td class="column">@include('reports.partials.metrics-distribution', ['title' => 'Distribuição por sistema', 'label' => 'Sistema', 'rows' => $report->systems, 'compact' => true])</td>
+            <td class="spacer"></td>
+            <td class="column">@include('reports.partials.metrics-distribution', ['title' => 'Distribuição por categoria', 'label' => 'Categoria', 'rows' => $report->categories, 'compact' => true])</td>
+        </tr></tbody></table>
+    @else
+        @include('reports.partials.metrics-distribution', ['title' => 'Distribuição por sistema', 'label' => 'Sistema', 'rows' => $report->systems, 'compact' => false])
+        @include('reports.partials.metrics-distribution', ['title' => 'Distribuição por categoria', 'label' => 'Categoria', 'rows' => $report->categories, 'compact' => false])
+    @endif
+    <h2>Distribuição por subcategoria</h2>
+    <p class="muted section-note">Participação dentro da respectiva categoria, considerando os filtros aplicados.</p>
+    <table class="subcategories"><thead><tr>
+        <th class="category">Categoria</th><th class="subcategory">Subcategoria</th><th class="number">Ocorrências</th><th class="number">Na categoria</th>
+    </tr></thead><tbody>
+        @forelse ($report->categories as $category)
             @foreach ($category['subcategories'] as $row)
-                <tr><td>{{ $row['name'] }}</td><td class="number">{{ number_format($row['total'], 0, ',', '.') }}</td><td class="number">{{ number_format($row['percentage'], 2, ',', '.') }}%</td></tr>
+                <tr>
+                    <td>{{ $category['name'] }}</td>
+                    <td>{{ $row['name'] }}</td>
+                    <td class="number">{{ number_format($row['total'], 0, ',', '.') }}</td>
+                    <td class="number">{{ number_format($row['percentage'], 2, ',', '.') }}%</td>
+                </tr>
             @endforeach
-        </tbody></table>
-        </div>
-    @empty
-        <p class="empty">Nenhuma categoria ou subcategoria com ocorrências no período.</p>
-    @endforelse
-    <div class="new-page"></div>
-    <h2>5. Evolução temporal</h2>
-    <p class="muted">Quantidade por mês de abertura. Os períodos limitados incluem os meses sem atendimentos; todo o histórico apresenta os meses com registros.</p>
+        @empty
+            <tr><td colspan="4">Nenhuma categoria ou subcategoria com ocorrências no período.</td></tr>
+        @endforelse
+    </tbody></table>
+    <h2>Evolução temporal</h2>
+    <p class="muted section-note">Atendimentos por mês de abertura. Períodos limitados incluem meses zerados; todo o histórico mostra os meses com registros.</p>
     @forelse ($charts as $chart)
-        <div class="monthly-block">
-            <img src="{{ $chart['image'] }}" alt="Evolução mensal dos atendimentos" />
-            <table><thead><tr><th>Mês</th><th class="number">Atendimentos</th></tr></thead><tbody>
-                @foreach ($chart['rows'] as $row)
-                    <tr><td>{{ substr($row['month'], 5, 2) }}/{{ substr($row['month'], 0, 4) }}</td><td class="number">{{ number_format($row['total'], 0, ',', '.') }}</td></tr>
-                @endforeach
-            </tbody></table>
-        </div>
+        @if (count($chart['rows']) <= 4)
+            <table @class(['monthly-layout', 'single-month' => count($chart['rows']) === 1])><tbody><tr>
+                <td class="plot"><img src="{{ $chart['image'] }}" alt="Evolução mensal dos atendimentos" /></td>
+                <td class="spacer"></td>
+                <td class="values">@include('reports.partials.metrics-monthly-values', ['rows' => $chart['rows'], 'columns' => 1])</td>
+            </tr></tbody></table>
+        @else
+            <div class="monthly-chart"><img src="{{ $chart['image'] }}" alt="Evolução mensal dos atendimentos" /></div>
+            @include('reports.partials.metrics-monthly-values', ['rows' => $chart['rows'], 'columns' => 3])
+        @endif
     @empty
         <p class="empty">Sem meses com registros para os filtros selecionados.</p>
     @endforelse

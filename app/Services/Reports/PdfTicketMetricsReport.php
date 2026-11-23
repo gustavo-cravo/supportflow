@@ -27,8 +27,8 @@ class PdfTicketMetricsReport
         $canvas = $pdf->getCanvas();
         $font = $pdf->getFontMetrics()->getFont('DejaVu Sans');
         assert($font !== null);
-        $canvas->page_text(40, $canvas->get_height() - 29, 'SupportFlow | Relatório estatístico', $font, 8, [0.46, 0.50, 0.59]);
-        $canvas->page_text($canvas->get_width() - 126, $canvas->get_height() - 29, 'Página {PAGE_NUM} de {PAGE_COUNT}', $font, 8, [0.46, 0.50, 0.59]);
+        $canvas->page_text(36, $canvas->get_height() - 27, 'SupportFlow | America/Sao_Paulo', $font, 7.5, [0.39, 0.45, 0.55]);
+        $canvas->page_text($canvas->get_width() - 125, $canvas->get_height() - 27, 'Página {PAGE_NUM} de {PAGE_COUNT}', $font, 7.5, [0.39, 0.45, 0.55]);
 
         return $pdf->output();
     }
@@ -36,17 +36,33 @@ class PdfTicketMetricsReport
     /** @param list<array{month: string, total: int}> $rows */
     private function chart(array $rows): string
     {
+        // Keep labels at a readable size in both full-width and side-by-side charts.
+        $compact = count($rows) <= 4;
+        $width = $compact ? 340 : 540;
+        $height = $compact ? 74 : 114;
+        $baseline = $compact ? 48 : 82;
+        $amplitude = $compact ? 26 : 58;
+        $left = $compact ? 25 : 35;
+        $span = $width - 2 * $left;
+        $labelY = $compact ? 69 : 103;
+        $labelFont = $compact ? 10 : 9;
+        if (count($rows) === 1) {
+            $height = 54;
+            $baseline = 30;
+            $amplitude = 10;
+            $labelY = 49;
+        }
         $maximum = max(1, ...array_column($rows, 'total'));
         $points = [];
         $labels = '';
         foreach ($rows as $index => $row) {
-            $x = count($rows) === 1 ? 270 : 35 + $index * 470 / (count($rows) - 1);
-            $y = 125 - $row['total'] * 90 / $maximum;
+            $x = count($rows) === 1 ? $width / 2 : $left + $index * $span / (count($rows) - 1);
+            $y = $baseline - $row['total'] * $amplitude / $maximum;
             $points[] = $x.','.$y;
             $month = substr($row['month'], 5, 2).'/'.substr($row['month'], 0, 4);
-            $labels .= '<circle cx="'.$x.'" cy="'.$y.'" r="3" fill="#245cda"/><text x="'.$x.'" y="'.($y - 10).'" text-anchor="middle">'.$row['total'].'</text><text x="'.$x.'" y="149" text-anchor="middle" fill="#758096">'.$month.'</text>';
+            $labels .= '<circle cx="'.$x.'" cy="'.$y.'" r="2.5" fill="#245cda"/><text x="'.$x.'" y="'.($y - 8).'" text-anchor="middle">'.$row['total'].'</text><text x="'.$x.'" y="'.$labelY.'" font-size="'.$labelFont.'" text-anchor="middle" fill="#64748b">'.$month.'</text>';
         }
-        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="540" height="165" viewBox="0 0 540 165"><g font-family="DejaVu Sans" font-size="10" fill="#202b40"><line x1="25" y1="125" x2="515" y2="125" stroke="#e9edf4"/><polyline points="'.implode(' ', $points).'" fill="none" stroke="#245cda" stroke-width="2"/>'.$labels.'</g></svg>';
+        $svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'.$width.'" height="'.$height.'" viewBox="0 0 '.$width.' '.$height.'"><g font-family="DejaVu Sans" font-size="10" fill="#28364a"><line x1="'.($left - 10).'" y1="'.$baseline.'" x2="'.($width - $left + 10).'" y2="'.$baseline.'" stroke="#dbe4ef"/><polyline points="'.implode(' ', $points).'" fill="none" stroke="#245cda" stroke-width="2"/>'.$labels.'</g></svg>';
 
         return 'data:image/svg+xml;base64,'.base64_encode($svg);
     }
