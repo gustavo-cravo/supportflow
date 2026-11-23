@@ -16,12 +16,12 @@ As seleções de sistemas de uma categoria carregam todas as páginas da API exi
 
 A migration `2026_11_23_000001_create_problem_classifications_tables.php` cria quatro tabelas, sem alterar as tabelas existentes:
 
-| Tabela | Conteúdo e restrições |
-| --- | --- |
-| `problem_categories` | Nome, nome normalizado único, descrição opcional, `is_active` e timestamps. |
-| `problem_subcategories` | Categoria obrigatória, nome, nome normalizado, descrição opcional, `is_active` e timestamps. O nome normalizado é único dentro da categoria. |
-| `problem_category_system` | Identificador próprio, categoria, sistema, `is_active` e timestamps. A combinação categoria/sistema é única. |
-| `problem_subcategory_system` | Identificador próprio, subcategoria, categoria, sistema, `is_active` e timestamps. A combinação subcategoria/sistema é única. |
+| Tabela                       | Conteúdo e restrições                                                                                                                        |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `problem_categories`         | Nome, nome normalizado único, descrição opcional, `is_active` e timestamps.                                                                  |
+| `problem_subcategories`      | Categoria obrigatória, nome, nome normalizado, descrição opcional, `is_active` e timestamps. O nome normalizado é único dentro da categoria. |
+| `problem_category_system`    | Identificador próprio, categoria, sistema, `is_active` e timestamps. A combinação categoria/sistema é única.                                 |
+| `problem_subcategory_system` | Identificador próprio, subcategoria, categoria, sistema, `is_active` e timestamps. A combinação subcategoria/sistema é única.                |
 
 As chaves estrangeiras usam restrição de exclusão. Duas chaves compostas garantem que o vínculo de uma subcategoria pertença à categoria correta e referencie uma associação categoria/sistema existente. A API valida também que a associação principal esteja habilitada.
 
@@ -43,9 +43,9 @@ O gerenciamento normal não oferece exclusão definitiva. A integração futura 
 
 Todos os caminhos abaixo possuem o prefixo `/api`. As respostas seguem os recursos JSON e a paginação existentes; erros de validação retornam HTTP 422 com `errors` por campo.
 
-| Recurso | Listar/criar | Consultar/atualizar |
-| --- | --- | --- |
-| Categorias | `GET`, `POST /problem-categories` | `GET`, `PUT`, `PATCH /problem-categories/{id}` |
+| Recurso       | Listar/criar                         | Consultar/atualizar                               |
+| ------------- | ------------------------------------ | ------------------------------------------------- |
+| Categorias    | `GET`, `POST /problem-categories`    | `GET`, `PUT`, `PATCH /problem-categories/{id}`    |
 | Subcategorias | `GET`, `POST /problem-subcategories` | `GET`, `PUT`, `PATCH /problem-subcategories/{id}` |
 
 Ativação/desativação: envie `{"is_active": false}` ou `{"is_active": true}` por `PATCH`. Associação/desassociação: envie a seleção completa em `system_ids`, por exemplo `{"system_ids": [1, 2]}`. Campos omitidos em atualizações são preservados.
@@ -53,13 +53,18 @@ Ativação/desativação: envie `{"is_active": false}` ou `{"is_active": true}` 
 Criação de categoria:
 
 ```json
-{"name": "Falha de acesso", "description": null, "is_active": true, "system_ids": [1, 2]}
+{
+    "name": "Falha de acesso",
+    "description": null,
+    "is_active": true,
+    "system_ids": [1, 2]
+}
 ```
 
 Criação de subcategoria:
 
 ```json
-{"problem_category_id": 1, "name": "Credenciais inválidas", "system_ids": [2]}
+{ "problem_category_id": 1, "name": "Credenciais inválidas", "system_ids": [2] }
 ```
 
 As respostas incluem `systems` e `system_ids` para as associações habilitadas. `system_associations` inclui também as desabilitadas, identificadas por `association_active`, com datas de associação. `is_active` de cada sistema representa a situação do próprio sistema. Categorias incluem `subcategories_count`; subcategorias incluem `problem_category_id` e os dados resumidos da categoria.

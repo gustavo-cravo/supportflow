@@ -6,29 +6,29 @@ A API estatística calcula indicadores, distribuições por sistema e classifica
 
 Todos os endpoints abaixo são `GET` e usam os mesmos filtros.
 
-| Caminho | Resultado |
-| --- | --- |
-| `/api/metrics/summary` | Total, encerrados, não encerrados, sistemas distintos e sem classificação. |
-| `/api/metrics/systems` | Volume, encerrados e não encerrados por sistema. |
-| `/api/metrics/categories` | Ocorrências por categoria, participação no total filtrado e distribuição por sistema. |
+| Caminho                      | Resultado                                                                                            |
+| ---------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `/api/metrics/summary`       | Total, encerrados, não encerrados, sistemas distintos e sem classificação.                           |
+| `/api/metrics/systems`       | Volume, encerrados e não encerrados por sistema.                                                     |
+| `/api/metrics/categories`    | Ocorrências por categoria, participação no total filtrado e distribuição por sistema.                |
 | `/api/metrics/subcategories` | Ocorrências por categoria/subcategoria, participação dentro da categoria e distribuição por sistema. |
-| `/api/metrics/monthly` | Série mensal em ordem cronológica. |
-| `/api/metrics/tickets` | Atendimentos paginados responsáveis pelo resultado filtrado. |
+| `/api/metrics/monthly`       | Série mensal em ordem cronológica.                                                                   |
+| `/api/metrics/tickets`       | Atendimentos paginados responsáveis pelo resultado filtrado.                                         |
 
 Os agregados retornam `data` e `meta.filters`, com os filtros efetivamente aplicados. As distribuições e a série mensal também retornam `meta.total`, a soma dos volumes apresentados. A listagem de atendimentos reutiliza `SupportTicketResource` e a paginação atual, com `data`, `links`, `meta.total`, `meta.current_page` e demais metadados, acrescentando `meta.filters`.
 
 ## Parâmetros
 
-| Parâmetro | Valores e comportamento |
-| --- | --- |
-| `period` | `this_month`, `last_30_days`, `last_3_months`, `last_6_months`, `this_year`, `all` ou `custom`. Padrão: `last_6_months`. |
-| `date_from`, `date_to` | Datas `YYYY-MM-DD`, obrigatórias somente em `custom`. A final deve ser igual ou posterior à inicial. |
-| `system_id` | ID de um sistema existente, inclusive inativo. Omitir para todos. |
-| `status` | `all` (padrão), `closed`, `not_closed`, `open`, `in_progress`, `waiting` ou `resolved`. |
-| `problem_category_id` | ID de uma categoria existente, inclusive inativa. Omitir para todas. |
+| Parâmetro                | Valores e comportamento                                                                                                                                                 |
+| ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `period`                 | `this_month`, `last_30_days`, `last_3_months`, `last_6_months`, `this_year`, `all` ou `custom`. Padrão: `last_6_months`.                                                |
+| `date_from`, `date_to`   | Datas `YYYY-MM-DD`, obrigatórias somente em `custom`. A final deve ser igual ou posterior à inicial.                                                                    |
+| `system_id`              | ID de um sistema existente, inclusive inativo. Omitir para todos.                                                                                                       |
+| `status`                 | `all` (padrão), `closed`, `not_closed`, `open`, `in_progress`, `waiting` ou `resolved`.                                                                                 |
+| `problem_category_id`    | ID de uma categoria existente, inclusive inativa. Omitir para todas.                                                                                                    |
 | `problem_subcategory_id` | ID de uma subcategoria existente, inclusive inativa. Pode ser usado sem filtro de categoria; quando ambos são enviados, devem corresponder ao mesmo cadastro principal. |
-| `classification` | `all` (padrão), `unclassified` ou `without_subcategory`. Os dois últimos permitem consultar os grupos sem categoria e sem subcategoria. |
-| `page`, `per_page` | Exclusivos de `/tickets`. Página mínima 1; tamanho padrão 15, de 1 a 100 registros. |
+| `classification`         | `all` (padrão), `unclassified` ou `without_subcategory`. Os dois últimos permitem consultar os grupos sem categoria e sem subcategoria.                                 |
+| `page`, `per_page`       | Exclusivos de `/tickets`. Página mínima 1; tamanho padrão 15, de 1 a 100 registros.                                                                                     |
 
 `classification=unclassified` não pode acompanhar uma categoria ou subcategoria específica. `classification=without_subcategory` exige categoria preenchida nos registros, subcategoria nula e não aceita um filtro de subcategoria específica; pode acompanhar `problem_category_id`.
 
@@ -42,15 +42,15 @@ O campo de referência é **`support_tickets.created_at`**, a abertura do atendi
 
 Os períodos relativos incluem o dia atual inteiro:
 
-| Período | Início | Final inclusivo |
-| --- | --- | --- |
-| `this_month` | Primeiro dia do mês atual | Hoje |
-| `last_30_days` | Hoje menos 29 dias | Hoje |
-| `last_3_months` | Primeiro dia do mês atual menos 2 meses | Hoje |
-| `last_6_months` | Primeiro dia do mês atual menos 5 meses | Hoje |
-| `this_year` | 1º de janeiro do ano atual | Hoje |
-| `all` | Sem limite inicial | Sem limite final |
-| `custom` | Data inicial informada | Data final informada |
+| Período         | Início                                  | Final inclusivo      |
+| --------------- | --------------------------------------- | -------------------- |
+| `this_month`    | Primeiro dia do mês atual               | Hoje                 |
+| `last_30_days`  | Hoje menos 29 dias                      | Hoje                 |
+| `last_3_months` | Primeiro dia do mês atual menos 2 meses | Hoje                 |
+| `last_6_months` | Primeiro dia do mês atual menos 5 meses | Hoje                 |
+| `this_year`     | 1º de janeiro do ano atual              | Hoje                 |
+| `all`           | Sem limite inicial                      | Sem limite final     |
+| `custom`        | Data inicial informada                  | Data final informada |
 
 Assim, em 23/11/2026, o padrão cobre **01/06/2026 a 23/11/2026**, e os últimos 30 dias cobrem **25/10/2026 a 23/11/2026**. Os períodos de meses são meses de calendário, incluindo o atual; os últimos 30 dias são 30 datas locais, e não uma janela móvel de 720 horas.
 
@@ -78,26 +78,26 @@ Resumo real observado na validação local com `period=all`:
 
 ```json
 {
-  "data": {
-    "total": 16,
-    "closed": 7,
-    "not_closed": 9,
-    "systems_count": 4,
-    "unclassified": 16
-  },
-  "meta": {
-    "filters": {
-      "period": "all",
-      "date_from": null,
-      "date_to": null,
-      "timezone": "America/Sao_Paulo",
-      "system_id": null,
-      "status": "all",
-      "problem_category_id": null,
-      "problem_subcategory_id": null,
-      "classification": "all"
+    "data": {
+        "total": 16,
+        "closed": 7,
+        "not_closed": 9,
+        "systems_count": 4,
+        "unclassified": 16
+    },
+    "meta": {
+        "filters": {
+            "period": "all",
+            "date_from": null,
+            "date_to": null,
+            "timezone": "America/Sao_Paulo",
+            "system_id": null,
+            "status": "all",
+            "problem_category_id": null,
+            "problem_subcategory_id": null,
+            "classification": "all"
+        }
     }
-  }
 }
 ```
 
@@ -107,12 +107,12 @@ Linha por sistema:
 
 ```json
 {
-  "system_id": 1,
-  "system_name": "Indicar",
-  "is_active": true,
-  "total": 6,
-  "closed": 3,
-  "not_closed": 3
+    "system_id": 1,
+    "system_name": "Indicar",
+    "is_active": true,
+    "total": 6,
+    "closed": 3,
+    "not_closed": 3
 }
 ```
 
@@ -120,16 +120,26 @@ Linha por categoria, em um recorte com 13 atendimentos:
 
 ```json
 {
-  "problem_category_id": 1,
-  "category_name": "Falha de acesso",
-  "is_active": false,
-  "total": 7,
-  "percentage": 53.85,
-  "systems": [
-    {"system_id": 1, "system_name": "Indicar", "is_active": true, "total": 3},
-    {"system_id": 2, "system_name": "iLube", "is_active": false, "total": 3},
-    {"system_id": 3, "system_name": ".way", "is_active": true, "total": 1}
-  ]
+    "problem_category_id": 1,
+    "category_name": "Falha de acesso",
+    "is_active": false,
+    "total": 7,
+    "percentage": 53.85,
+    "systems": [
+        {
+            "system_id": 1,
+            "system_name": "Indicar",
+            "is_active": true,
+            "total": 3
+        },
+        {
+            "system_id": 2,
+            "system_name": "iLube",
+            "is_active": false,
+            "total": 3
+        },
+        { "system_id": 3, "system_name": ".way", "is_active": true, "total": 1 }
+    ]
 }
 ```
 
@@ -137,20 +147,30 @@ Linha por subcategoria, dentro da categoria com sete ocorrências:
 
 ```json
 {
-  "problem_category_id": 1,
-  "category_name": "Falha de acesso",
-  "category_is_active": false,
-  "problem_subcategory_id": 1,
-  "subcategory_name": "Sessão expirada",
-  "is_active": false,
-  "total": 4,
-  "category_total": 7,
-  "percentage": 57.14,
-  "systems": [
-    {"system_id": 1, "system_name": "Indicar", "is_active": true, "total": 2},
-    {"system_id": 2, "system_name": "iLube", "is_active": false, "total": 1},
-    {"system_id": 3, "system_name": ".way", "is_active": true, "total": 1}
-  ]
+    "problem_category_id": 1,
+    "category_name": "Falha de acesso",
+    "category_is_active": false,
+    "problem_subcategory_id": 1,
+    "subcategory_name": "Sessão expirada",
+    "is_active": false,
+    "total": 4,
+    "category_total": 7,
+    "percentage": 57.14,
+    "systems": [
+        {
+            "system_id": 1,
+            "system_name": "Indicar",
+            "is_active": true,
+            "total": 2
+        },
+        {
+            "system_id": 2,
+            "system_name": "iLube",
+            "is_active": false,
+            "total": 1
+        },
+        { "system_id": 3, "system_name": ".way", "is_active": true, "total": 1 }
+    ]
 }
 ```
 
@@ -158,15 +178,15 @@ Exemplo fictício completo da série mensal, com parte dos metadados de filtro o
 
 ```json
 {
-  "data": [
-    {"month": "2026-06", "total": 2},
-    {"month": "2026-07", "total": 0},
-    {"month": "2026-08", "total": 1},
-    {"month": "2026-09", "total": 1},
-    {"month": "2026-10", "total": 1},
-    {"month": "2026-11", "total": 4}
-  ],
-  "meta": {"total": 9}
+    "data": [
+        { "month": "2026-06", "total": 2 },
+        { "month": "2026-07", "total": 0 },
+        { "month": "2026-08", "total": 1 },
+        { "month": "2026-09", "total": 1 },
+        { "month": "2026-10", "total": 1 },
+        { "month": "2026-11", "total": 4 }
+    ],
+    "meta": { "total": 9 }
 }
 ```
 

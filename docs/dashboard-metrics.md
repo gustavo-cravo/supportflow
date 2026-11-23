@@ -25,17 +25,17 @@ Mudar sistema ou categoria redefine escolhas dependentes incompatíveis. A mudan
 
 Todas as requisições passam por `services/api.js` e são somente GET. Nenhum endpoint, cálculo, migration ou regra de gravação foi alterado nesta etapa.
 
-| Endpoint | Utilização |
-| --- | --- |
-| `/api/metrics/summary` | Total, não encerrados, encerrados, sistemas com atendimentos |
-| `/api/metrics/systems` | Barras por sistema, na ordem de volume da API |
-| `/api/metrics/monthly` | Evolução mensal na ordem cronológica da API |
-| `/api/metrics/categories` | Ranking e percentuais no conjunto filtrado |
-| `/api/metrics/subcategories` | Detalhamento e percentuais dentro da categoria |
-| `/api/metrics/tickets` | Registros relacionados, com `page` e `per_page=15` |
-| `/api/systems` | Opções de sistemas, incluindo inativos |
-| `/api/problem-categories` | Opções de categorias e vínculos históricos |
-| `/api/problem-subcategories` | Opções de subcategorias e vínculos históricos |
+| Endpoint                     | Utilização                                                   |
+| ---------------------------- | ------------------------------------------------------------ |
+| `/api/metrics/summary`       | Total, não encerrados, encerrados, sistemas com atendimentos |
+| `/api/metrics/systems`       | Barras por sistema, na ordem de volume da API                |
+| `/api/metrics/monthly`       | Evolução mensal na ordem cronológica da API                  |
+| `/api/metrics/categories`    | Ranking e percentuais no conjunto filtrado                   |
+| `/api/metrics/subcategories` | Detalhamento e percentuais dentro da categoria               |
+| `/api/metrics/tickets`       | Registros relacionados, com `page` e `per_page=15`           |
+| `/api/systems`               | Opções de sistemas, incluindo inativos                       |
+| `/api/problem-categories`    | Opções de categorias e vínculos históricos                   |
+| `/api/problem-subcategories` | Opções de subcategorias e vínculos históricos                |
 
 Os três cadastros de opções são carregados uma vez por montagem, percorrendo suas páginas com `per_page=100`. Aplicar filtros não repete essas consultas. As cinco consultas agregadas recebem o mesmo conjunto de parâmetros; a apresentação só é publicada quando todas terminam. Elas representam consultas separadas ao banco, conforme a API da Etapa 3; não constituem uma transação com snapshot entre endpoints.
 

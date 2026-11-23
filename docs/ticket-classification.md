@@ -45,27 +45,27 @@ A migration depende das estruturas da Etapa 1 já existentes.
 
 ## Endpoints adaptados
 
-| Endpoint | Comportamento |
-| --- | --- |
-| `POST /api/support-tickets` | Aceita os dois identificadores opcionais. |
-| `PUT/PATCH /api/support-tickets/{id}` | Preserva campos omitidos, valida alterações e aceita remoção explícita com `null`. |
-| `GET /api/support-tickets` e `GET /api/support-tickets/{id}` | Retornam identificadores e os cadastros associados, reutilizando `ProblemClassificationResource`. |
-| `GET /api/support-tickets/{id}/related` | Retorna também os cadastros de classificação dos registros relacionados. |
-| `GET /api/problem-categories?selectable=1&system_id={id}` | Filtra opções válidas para um atendimento. Exige sistema e respeita categoria, sistema e associação ativos. |
-| `GET /api/problem-subcategories?selectable=1&system_id={id}&problem_category_id={id}` | Exige o contexto completo e valida a disponibilidade da categoria principal e da subcategoria. |
+| Endpoint                                                                              | Comportamento                                                                                               |
+| ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `POST /api/support-tickets`                                                           | Aceita os dois identificadores opcionais.                                                                   |
+| `PUT/PATCH /api/support-tickets/{id}`                                                 | Preserva campos omitidos, valida alterações e aceita remoção explícita com `null`.                          |
+| `GET /api/support-tickets` e `GET /api/support-tickets/{id}`                          | Retornam identificadores e os cadastros associados, reutilizando `ProblemClassificationResource`.           |
+| `GET /api/support-tickets/{id}/related`                                               | Retorna também os cadastros de classificação dos registros relacionados.                                    |
+| `GET /api/problem-categories?selectable=1&system_id={id}`                             | Filtra opções válidas para um atendimento. Exige sistema e respeita categoria, sistema e associação ativos. |
+| `GET /api/problem-subcategories?selectable=1&system_id={id}&problem_category_id={id}` | Exige o contexto completo e valida a disponibilidade da categoria principal e da subcategoria.              |
 
 As listagens de gerenciamento da Etapa 1 mantêm seu comportamento quando `selectable` não é informado. As rotas existentes de status e encerramento preservam as classificações; seus contratos permanecem iguais. Não foram criadas rotas novas.
 
 Exemplo dos campos adicionais:
 
 ```json
-{"problem_category_id": 2, "problem_subcategory_id": 4}
+{ "problem_category_id": 2, "problem_subcategory_id": 4 }
 ```
 
 Para remover ambos:
 
 ```json
-{"problem_category_id": null, "problem_subcategory_id": null}
+{ "problem_category_id": null, "problem_subcategory_id": null }
 ```
 
 Se um atendimento já possuir subcategoria, mudar apenas a categoria não apaga a subcategoria: uma combinação incompatível retorna HTTP 422 em `errors.problem_subcategory_id`. Envie uma nova subcategoria compatível ou `null` explicitamente. As demais validações seguem o formato atual de erros por campo do SupportFlow.

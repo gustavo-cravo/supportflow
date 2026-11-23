@@ -64,13 +64,13 @@ O documento é A4, utiliza a cor azul do projeto, fonte Unicode incorporada, mar
 
 ## Arquivo Excel
 
-| Planilha | Conteúdo |
-| --- | --- |
-| Resumo Geral | Filtros, período, data de geração e cinco indicadores |
-| Por Sistema | Sistema, total, encerrados, não encerrados e participação |
-| Categorias | Categoria, ocorrências e participação |
-| Subcategorias | Categoria, subcategoria, sistema, ocorrências e participação na categoria |
-| Evolução Mensal | Mês e quantidade de atendimentos |
+| Planilha        | Conteúdo                                                                  |
+| --------------- | ------------------------------------------------------------------------- |
+| Resumo Geral    | Filtros, período, data de geração e cinco indicadores                     |
+| Por Sistema     | Sistema, total, encerrados, não encerrados e participação                 |
+| Categorias      | Categoria, ocorrências e participação                                     |
+| Subcategorias   | Categoria, subcategoria, sistema, ocorrências e participação na categoria |
+| Evolução Mensal | Mês e quantidade de atendimentos                                          |
 
 As planilhas possuem cabeçalhos destacados, larguras definidas, quebra de texto, formatos numéricos e percentuais, congelamento e filtros nos intervalos com dados. As contagens são números e os percentuais são frações numéricas com formato percentual. Não há fórmulas: nomes cadastrados, mesmo iniciados por `=`, `+`, `-` ou `@`, são gravados explicitamente como texto. Não são criados hyperlinks externos.
 
