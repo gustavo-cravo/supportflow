@@ -56,6 +56,20 @@ ORDER BY id;
 
 O MySQL aplica `NOT NULL`. O SQLite aplica a obrigatoriedade por triggers de inserção e atualização para preservar a tabela que os atendimentos referenciam. Ambos aplicam o domínio da linha e a integridade da marca. A retirada das colunas é bloqueada enquanto houver classificações preenchidas. A retirada das tabelas é bloqueada enquanto houver registros.
 
+## Catálogo permanente de marcas
+
+O `DatabaseSeeder` inclui `VehicleBrandSeeder` ao inicializar uma base nova. Para carregar apenas as marcas em uma base com a tabela `vehicle_brands` já migrada, confira a conexão de destino e execute:
+
+```powershell
+php artisan db:seed --class=VehicleBrandSeeder
+```
+
+A fonte é [vehicle-brands.txt](../database/seeders/data/vehicle-brands.txt), cópia das 125 linhas fornecidas para o SupportFlow. A grafia, a ordem, a caixa, os espaços e os hífens são preservados. Por exemplo, GWM e GREAT WALL, EFFA e EFFA-JMC, SAAB e SAAB-SCANIA são cadastros separados.
+
+O seeder procura pela chave única `normalized_name`. Se a marca existente só difere na capitalização, ele grava o nome oficial mantendo o ID, os vínculos e as datas. Marcas com outras chaves permanecem no cadastro. Uma diferença além da capitalização na mesma chave gera erro com os nomes e o ID, e a transação reverte as mudanças dessa execução. A quantidade final de marcas pode passar de 125 se o banco já contiver marcas adicionais.
+
+As marcas oficiais são dados permanentes. Os seeders demonstrativos podem reutilizá-las. Se uma marca tiver sido criada pela demonstração e for adotada pelo catálogo oficial, o próprio seeder retira seu ID do registro de propriedade da limpeza demonstrativa. Veja o [guia de dados fictícios](demo-data.md#limpeza-da-base-veicular).
+
 ## API de marcas
 
 | Método e caminho                          | Resultado                                            |
