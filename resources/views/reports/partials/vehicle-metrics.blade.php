@@ -22,7 +22,7 @@
     <table @class(['vehicle-report', 'vehicle-report-wide' => count($table['headers']) > 5])>
         <thead><tr>
             @foreach ($table['headers'] as $column => $header)
-                <th style="width: {{ 100 * $table['widths'][$column] / array_sum($table['widths']) }}%">{{ $header }}</th>
+                <th @style(['width: '.(100 * $table['widths'][$column] / array_sum($table['widths'])).'%'])>{{ $header }}</th>
             @endforeach
         </tr></thead>
         <tbody>
@@ -43,7 +43,7 @@
                         <td @class(['numeric' => $numeric])>
                             {{ $numeric ? ($percent ? number_format($value * 100, 2, ',', '.').'%' : number_format($value, 0, ',', '.')) : $value }}
                             @if ($numeric && $percent && $table['sheet'] === 'Linhas veiculares')
-                                <div class="vehicle-share"><div style="width: {{ $value * 100 }}%"></div></div>
+                                <div class="vehicle-share"><div @style(['width: '.($value * 100).'%'])></div></div>
                             @endif
                         </td>
                     @endforeach

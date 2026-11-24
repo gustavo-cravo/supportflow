@@ -8,21 +8,20 @@ use App\Models\VehicleBrand;
 use Database\Seeders\VehicleValidationSeeder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Tests\Support\VehicleApiFixture;
 
-beforeEach(function () {
-    $this->brand = VehicleBrand::factory()->create();
-    $this->classification = ['brand_id' => $this->brand->id, 'vehicle_line' => 'light'];
-});
+beforeEach(fn () => app()->instance(VehicleApiFixture::class, new VehicleApiFixture));
 
 test('creates a vehicle with a normalized plate and an optional model description', function (string $input, string $plate, ?string $description) {
-    $payload = [...$this->classification, 'plate' => $input];
+    $fixture = app(VehicleApiFixture::class);
+    $payload = [...$fixture->classification, 'plate' => $input];
     if ($description !== null) {
         $payload['model_description'] = $description;
     }
     $response = $this->postJson('/api/vehicles', $payload)->assertCreated()
         ->assertJsonPath('data.plate', $plate)
-        ->assertJsonPath('data.brand_id', $this->brand->id)
-        ->assertJsonPath('data.brand.name', $this->brand->name)
+        ->assertJsonPath('data.brand_id', $fixture->brand->id)
+        ->assertJsonPath('data.brand.name', $fixture->brand->name)
         ->assertJsonPath('data.vehicle_line', 'light')
         ->assertJsonPath('data.model_description', $description)
         ->assertJsonPath('data.support_tickets_count', 0)
@@ -38,7 +37,8 @@ test('creates a vehicle with a normalized plate and an optional model descriptio
 ]);
 
 test('rejects missing and invalid plates', function (array $payload) {
-    $this->postJson('/api/vehicles', [...$this->classification, ...$payload])->assertUnprocessable()->assertJsonValidationErrors('plate');
+    $fixture = app(VehicleApiFixture::class);
+    $this->postJson('/api/vehicles', [...$fixture->classification, ...$payload])->assertUnprocessable()->assertJsonValidationErrors('plate');
     $this->assertDatabaseEmpty('vehicles');
 })->with([
     'missing' => [[]],
@@ -54,18 +54,20 @@ test('rejects missing and invalid plates', function (array $payload) {
 ]);
 
 test('rejects an invalid model description', function (mixed $description) {
-    $this->postJson('/api/vehicles', [...$this->classification, 'plate' => 'ABC1234', 'model_description' => $description])
+    $fixture = app(VehicleApiFixture::class);
+    $this->postJson('/api/vehicles', [...$fixture->classification, 'plate' => 'ABC1234', 'model_description' => $description])
         ->assertUnprocessable()->assertJsonValidationErrors('model_description');
 })->with([[123], [str_repeat('a', 16001)]]);
 
 test('enforces plate uniqueness after normalization in the API and in the database', function () {
+    $fixture = app(VehicleApiFixture::class);
     $vehicle = Vehicle::factory()->create(['plate' => 'abc 1d23']);
     expect($vehicle->plate)->toBe('ABC1D23');
     foreach (['ABC1D23', 'abc-1d23', 'aBc 1D23'] as $plate) {
-        $this->postJson('/api/vehicles', [...$this->classification, 'plate' => $plate])->assertUnprocessable()->assertJsonValidationErrors('plate');
+        $this->postJson('/api/vehicles', [...$fixture->classification, 'plate' => $plate])->assertUnprocessable()->assertJsonValidationErrors('plate');
     }
     $this->assertDatabaseCount('vehicles', 1);
-    expect(fn () => DB::table('vehicles')->insert([...$this->classification, 'plate' => 'ABC1D23']))
+    expect(fn () => DB::table('vehicles')->insert([...$fixture->classification, 'plate' => 'ABC1D23']))
         ->toThrow(QueryException::class, 'vehicles.plate');
 });
 
@@ -184,13 +186,14 @@ test('creates, updates and removes a single optional vehicle link on a ticket', 
 });
 
 test('requires a registered brand and an explicit valid line on new vehicles', function () {
-    $vehicle = [...$this->classification, 'plate' => 'ABC1234'];
+    $fixture = app(VehicleApiFixture::class);
+    $vehicle = [...$fixture->classification, 'plate' => 'ABC1234'];
     foreach (['brand_id', 'vehicle_line'] as $field) {
         $missing = $vehicle;
         unset($missing[$field]);
         $this->postJson('/api/vehicles', $missing)->assertUnprocessable()->assertJsonValidationErrors($field);
     }
-    foreach ([999999, true, (string) $this->brand->id, null] as $brand) {
+    foreach ([999999, true, (string) $fixture->brand->id, null] as $brand) {
         $this->postJson('/api/vehicles', [...$vehicle, 'brand_id' => $brand])->assertUnprocessable()->assertJsonValidationErrors('brand_id');
     }
     foreach (['LIGHT', 'passenger', ['heavy'], null] as $line) {
@@ -200,8 +203,8 @@ test('requires a registered brand and an explicit valid line on new vehicles', f
 
     $this->postJson('/api/vehicles', $vehicle)->assertCreated()->assertJsonPath('data.vehicle_line', 'light');
     $this->postJson('/api/vehicles', [...$vehicle, 'plate' => 'ABC1D23', 'vehicle_line' => 'heavy'])
-        ->assertCreated()->assertJsonPath('data.vehicle_line', 'heavy')->assertJsonPath('data.brand.id', $this->brand->id);
-    expect($this->brand->vehicles()->count())->toBe(2);
+        ->assertCreated()->assertJsonPath('data.vehicle_line', 'heavy')->assertJsonPath('data.brand.id', $fixture->brand->id);
+    expect($fixture->brand->vehicles()->count())->toBe(2);
 });
 
 test('searches brand names and combines text, brand and vehicle line filters', function () {
@@ -240,7 +243,8 @@ test('returns global vehicle counts independently of filters and pagination', fu
 });
 
 test('returns the current brand and line in linked tickets, including changes to the brand name', function () {
-    $vehicle = Vehicle::factory()->for($this->brand, 'brand')->create();
+    $fixture = app(VehicleApiFixture::class);
+    $vehicle = Vehicle::factory()->for($fixture->brand, 'brand')->create();
     $other = VehicleBrand::factory()->create(['name' => 'Outra Marca']);
     $ticket = SupportTicket::create([
         'system_id' => System::create(['name' => 'Consultas'])->id,
@@ -252,8 +256,8 @@ test('returns the current brand and line in linked tickets, including changes to
     $vehicleUrl = '/api/vehicles/'.$vehicle->id;
     $ticketUrl = '/api/support-tickets/'.$ticket->id;
     $this->getJson($ticketUrl)->assertOk()
-        ->assertJsonPath('data.vehicle.brand_id', $this->brand->id)
-        ->assertJsonPath('data.vehicle.brand.name', $this->brand->name)
+        ->assertJsonPath('data.vehicle.brand_id', $fixture->brand->id)
+        ->assertJsonPath('data.vehicle.brand.name', $fixture->brand->name)
         ->assertJsonPath('data.vehicle.vehicle_line', 'light');
 
     $this->patchJson($vehicleUrl, ['brand_id' => null, 'vehicle_line' => null])

@@ -1,18 +1,11 @@
 <?php
 
-use App\Models\Contact;
-use App\Models\Customer;
-use App\Models\ProblemCategory;
-use App\Models\ProblemSubcategory;
-use App\Models\SupportTicket;
-use App\Models\System;
-use App\Models\Vehicle;
-use App\Models\VehicleBrand;
 use App\Services\Reports\TicketMetricsReport;
 use App\Support\TicketMetricsFilters;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use Tests\Support\VehicleMetricsFixture;
 
 function vehicleMetricsUrl(string $endpoint, array $filters = []): string
 {
@@ -38,39 +31,10 @@ function vehiclePdfText(string $pdf): string
     return implode("\n", array_map(fn (string $stream) => @gzuncompress($stream) ?: $stream, $matches[1]));
 }
 
-beforeEach(function () {
-    $this->alfa = VehicleBrand::create(['name' => 'Marca Alfa']);
-    $this->beta = VehicleBrand::create(['name' => 'Marca Beta']);
-    $this->system = System::create(['name' => 'Sistema A']);
-    $this->otherSystem = System::create(['name' => 'Sistema B']);
-    $this->category = ProblemCategory::create(['name' => 'Identificação']);
-    $this->car = Vehicle::factory()->for($this->alfa, 'brand')->create(['vehicle_line' => 'light', 'model_description' => 'Série 1.6 LX 2007', 'plate' => 'HFS4456']);
-    $this->variant = Vehicle::factory()->for($this->alfa, 'brand')->create(['vehicle_line' => 'heavy', 'model_description' => "sÉrie   1.6\tLX 2007"]);
-    $this->other = Vehicle::factory()->for($this->beta, 'brand')->create(['vehicle_line' => 'heavy', 'model_description' => 'Série 1.6 LX 2007']);
-    $this->missing = Vehicle::factory()->for($this->alfa, 'brand')->create(['vehicle_line' => 'light', 'model_description' => null]);
-    $this->version = Vehicle::factory()->for($this->alfa, 'brand')->create(['vehicle_line' => 'light', 'model_description' => 'Série 1.6 LX 2008']);
-    Vehicle::factory()->for($this->beta, 'brand')->create(['vehicle_line' => 'heavy', 'model_description' => 'Nunca atendido']);
-    $this->first = ProblemSubcategory::create(['name' => 'Modelo divergente', 'problem_category_id' => $this->category->id]);
-    $this->second = ProblemSubcategory::create(['name' => 'Ano divergente', 'problem_category_id' => $this->category->id]);
-    $base = [
-        'system_id' => $this->system->id, 'contact_id' => Contact::create(['name' => 'CONTATO_PRIVADO_987'])->id,
-        'customer_id' => Customer::create(['name' => 'CLIENTE_PRIVADO_987'])->id, 'status' => 'open',
-        'title' => 'TITULO_PRIVADO_987', 'description' => 'DESCRICAO_PRIVADA_987', 'resolution' => 'SOLUCAO_PRIVADA_987',
-        'created_at' => '2026-11-20 09:00:00',
-    ];
-    $request = fn (array $fields) => SupportTicket::unguarded(fn () => SupportTicket::create([...$base, ...$fields]));
-    $this->firstTicket = $request(['vehicle_id' => $this->car->id, 'problem_category_id' => $this->category->id]);
-    $this->firstTicket->problemSubcategories()->attach([$this->first->id, $this->second->id], ['problem_category_id' => $this->category->id]);
-    $this->secondTicket = $request(['vehicle_id' => $this->car->id, 'problem_category_id' => $this->category->id, 'status' => 'closed', 'created_at' => '2026-11-20 23:59:59']);
-    $this->secondTicket->problemSubcategories()->attach($this->first->id, ['problem_category_id' => $this->category->id]);
-    $request(['vehicle_id' => $this->variant->id, 'problem_category_id' => $this->category->id, 'system_id' => $this->otherSystem->id]);
-    $request(['vehicle_id' => $this->other->id, 'problem_category_id' => $this->category->id]);
-    $request(['vehicle_id' => $this->missing->id]);
-    $request(['vehicle_id' => $this->version->id, 'status' => 'closed', 'created_at' => '2026-11-21 00:00:00']);
-    $request([]);
-});
+beforeEach(fn () => app()->instance(VehicleMetricsFixture::class, new VehicleMetricsFixture));
 
 test('separates tickets, distinct vehicles, normalized models and subcategory links', function () {
+    $fixture = app(VehicleMetricsFixture::class);
     $data = $this->getJson(vehicleMetricsUrl('vehicles'))->assertOk()->json('data');
     expect($data['summary'])->toBe([
         'with_vehicle' => 6, 'without_vehicle' => 1, 'identification_percentage' => 85.71,
@@ -80,11 +44,11 @@ test('separates tickets, distinct vehicles, normalized models and subcategory li
         ->and($data['lines'])->toBe([
             ['vehicle_line' => 'light', 'total' => 4, 'vehicles' => 3, 'percentage' => 66.67],
             ['vehicle_line' => 'heavy', 'total' => 2, 'vehicles' => 2, 'percentage' => 33.33],
-        ])->and($data['brands'][0])->toMatchArray(['brand_id' => $this->alfa->id, 'total' => 5, 'vehicles' => 4, 'percentage' => 83.33])
-        ->and($data['models'][0])->toMatchArray(['brand_id' => $this->alfa->id, 'total' => 3, 'vehicles' => 2, 'vehicle_line' => 'mixed',
-            'model_description' => $this->car->model_description])
+        ])->and($data['brands'][0])->toMatchArray(['brand_id' => $fixture->alfa->id, 'total' => 5, 'vehicles' => 4, 'percentage' => 83.33])
+        ->and($data['models'][0])->toMatchArray(['brand_id' => $fixture->alfa->id, 'total' => 3, 'vehicles' => 2, 'vehicle_line' => 'mixed',
+            'model_description' => $fixture->car->model_description])
         ->and(array_column($data['models'], 'model_description'))->toContain(null, 'Série 1.6 LX 2008')
-        ->and($data['vehicles'][0])->toMatchArray(['vehicle_id' => $this->car->id, 'plate' => 'HFS4456', 'total' => 2]);
+        ->and($data['vehicles'][0])->toMatchArray(['vehicle_id' => $fixture->car->id, 'plate' => 'HFS4456', 'total' => 2]);
 
     foreach ($data['problems'] as $rows) {
         expect(array_sum(array_column(array_filter($rows, fn ($row) => $row['level'] === 'subcategory'), 'total')))->toBe(3)
@@ -93,16 +57,17 @@ test('separates tickets, distinct vehicles, normalized models and subcategory li
 });
 
 test('applies the same filters to vehicle and previous metric endpoints with distinct paginated details', function () {
+    $fixture = app(VehicleMetricsFixture::class);
     $params = ['period' => 'custom', 'date_from' => '2026-11-20', 'date_to' => '2026-11-20', 'status' => 'closed',
-        'system_id' => $this->system->id, 'problem_category_id' => $this->category->id, 'problem_subcategory_id' => $this->first->id,
-        'vehicle_plate' => ' hfs-44 ', 'vehicle_model' => '1.6 LX', 'vehicle_brand_id' => $this->alfa->id, 'vehicle_line' => 'light'];
+        'system_id' => $fixture->system->id, 'problem_category_id' => $fixture->category->id, 'problem_subcategory_id' => $fixture->first->id,
+        'vehicle_plate' => ' hfs-44 ', 'vehicle_model' => '1.6 LX', 'vehicle_brand_id' => $fixture->alfa->id, 'vehicle_line' => 'light'];
     $this->getJson(vehicleMetricsUrl('vehicles', $params))->assertOk()
         ->assertJsonPath('meta.filters.vehicle_plate', 'HFS44')->assertJsonPath('data.summary.with_vehicle', 1)
         ->assertJsonPath('data.summary.distinct_models', 1)->assertJsonPath('data.summary.without_vehicle', 0)
         ->assertJsonCount(2, 'data.problems.brand');
     $this->getJson(vehicleMetricsUrl('summary', $params))->assertOk()->assertJsonPath('data.total', 1)->assertJsonPath('data.subcategory_occurrences', 1);
     $this->getJson(vehicleMetricsUrl('tickets', $params))->assertOk()->assertJsonPath('meta.total', 1)
-        ->assertJsonPath('data.0.id', $this->secondTicket->id)->assertJsonPath('data.0.vehicle.plate', 'HFS4456');
+        ->assertJsonPath('data.0.id', $fixture->secondTicket->id)->assertJsonPath('data.0.vehicle.plate', 'HFS4456');
     $this->getJson(vehicleMetricsUrl('vehicles', ['vehicle_presence' => 'without']))->assertOk()
         ->assertJsonPath('data.summary.without_vehicle', 1)->assertJsonPath('data.summary.identification_percentage', 0)
         ->assertJsonPath('data.lines.0.percentage', 0)->assertJsonCount(0, 'data.brands');
@@ -111,49 +76,53 @@ test('applies the same filters to vehicle and previous metric endpoints with dis
 });
 
 test('details model, brand, line, vehicle and classification groups with the same counts', function () {
+    $fixture = app(VehicleMetricsFixture::class);
     $data = $this->getJson(vehicleMetricsUrl('vehicles'))->assertOk()->json('data');
     foreach ([
-        [['vehicle_brand_id' => $this->alfa->id], 5],
+        [['vehicle_brand_id' => $fixture->alfa->id], 5],
         [['vehicle_line' => 'heavy'], 2],
-        [['group_vehicle_id' => $this->car->id], 2],
-        [['vehicle_brand_id' => $this->alfa->id, 'group_vehicle_model' => $data['models'][0]['model_key']], 3],
-        [['vehicle_brand_id' => $this->alfa->id, 'group_vehicle_model' => 'missing'], 1],
+        [['group_vehicle_id' => $fixture->car->id], 2],
+        [['vehicle_brand_id' => $fixture->alfa->id, 'group_vehicle_model' => $data['models'][0]['model_key']], 3],
+        [['vehicle_brand_id' => $fixture->alfa->id, 'group_vehicle_model' => 'missing'], 1],
     ] as [$filters, $count]) {
         $this->getJson(vehicleMetricsUrl('tickets', [...$filters, 'per_page' => 1]))->assertOk()
             ->assertJsonPath('meta.total', $count)->assertJsonCount(1, 'data');
     }
-    $modelGroup = ['vehicle_brand_id' => $this->alfa->id, 'group_vehicle_model' => $data['models'][0]['model_key'],
-        'system_id' => $this->system->id, 'problem_category_id' => $this->category->id];
+    $modelGroup = ['vehicle_brand_id' => $fixture->alfa->id, 'group_vehicle_model' => $data['models'][0]['model_key'],
+        'system_id' => $fixture->system->id, 'problem_category_id' => $fixture->category->id];
     $this->getJson(vehicleMetricsUrl('tickets', $modelGroup))->assertOk()->assertJsonPath('meta.total', 2);
-    $this->getJson(vehicleMetricsUrl('tickets', [...$modelGroup, 'problem_subcategory_id' => $this->second->id]))
-        ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.id', $this->firstTicket->id);
+    $this->getJson(vehicleMetricsUrl('tickets', [...$modelGroup, 'problem_subcategory_id' => $fixture->second->id]))
+        ->assertOk()->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.id', $fixture->firstTicket->id);
 });
 
 test('rejects contradictory and invalid vehicle filters and keeps detail groups off exports', function () {
+    $fixture = app(VehicleMetricsFixture::class);
     $this->getJson(vehicleMetricsUrl('vehicles', ['vehicle_presence' => 'without', 'vehicle_plate' => 'HFS4456', 'vehicle_line' => 'heavy']))
         ->assertUnprocessable()->assertJsonValidationErrors(['vehicle_plate', 'vehicle_line']);
     $this->getJson(vehicleMetricsUrl('summary', ['vehicle_plate' => 'HFS%42', 'vehicle_line' => 'medium', 'vehicle_brand_id' => 999999]))
         ->assertUnprocessable()->assertJsonValidationErrors(['vehicle_plate', 'vehicle_line', 'vehicle_brand_id']);
     $this->getJson(vehicleMetricsUrl('tickets', ['group_vehicle_model' => 'missing']))->assertUnprocessable()->assertJsonValidationErrors('vehicle_brand_id');
-    $this->getJson(vehicleMetricsUrl('export', ['format' => 'xlsx', 'group_vehicle_id' => $this->car->id, 'include_vehicle_statistics' => 'yes']))
+    $this->getJson(vehicleMetricsUrl('export', ['format' => 'xlsx', 'group_vehicle_id' => $fixture->car->id, 'include_vehicle_statistics' => 'yes']))
         ->assertUnprocessable()->assertJsonValidationErrors(['group_vehicle_id', 'include_vehicle_statistics']);
 });
 
 test('recalculates prior periods when model, brand and line change in the central registry', function () {
-    $params = ['period' => 'custom', 'date_from' => '2026-11-20', 'date_to' => '2026-11-20', 'vehicle_plate' => $this->missing->plate];
+    $fixture = app(VehicleMetricsFixture::class);
+    $params = ['period' => 'custom', 'date_from' => '2026-11-20', 'date_to' => '2026-11-20', 'vehicle_plate' => $fixture->missing->plate];
     $this->getJson(vehicleMetricsUrl('vehicles', $params))->assertOk()
         ->assertJsonPath('data.summary.vehicles_without_model', 1)->assertJsonPath('data.summary.light_tickets', 1);
-    $this->patchJson('/api/vehicles/'.$this->missing->id, [
-        'brand_id' => $this->beta->id, 'vehicle_line' => 'heavy', 'model_description' => 'Modelo atualizado',
+    $this->patchJson('/api/vehicles/'.$fixture->missing->id, [
+        'brand_id' => $fixture->beta->id, 'vehicle_line' => 'heavy', 'model_description' => 'Modelo atualizado',
     ])->assertOk();
     $this->getJson(vehicleMetricsUrl('vehicles', $params))->assertOk()
         ->assertJsonPath('data.summary.with_vehicle', 1)->assertJsonPath('data.summary.vehicles_without_model', 0)
-        ->assertJsonPath('data.summary.heavy_tickets', 1)->assertJsonPath('data.brands.0.brand_id', $this->beta->id)
+        ->assertJsonPath('data.summary.heavy_tickets', 1)->assertJsonPath('data.brands.0.brand_id', $fixture->beta->id)
         ->assertJsonPath('data.models.0.model_description', 'Modelo atualizado');
 });
 
 test('exports matched aggregate metrics when selected and keeps both formats private and optional', function () {
-    $this->car->update(['model_description' => 'Série LX (consulta hfs - 4456)']);
+    $fixture = app(VehicleMetricsFixture::class);
+    $fixture->car->update(['model_description' => 'Série LX (consulta hfs - 4456)']);
     $filters = ['vehicle_plate' => 'HFS-4456'];
     $data = $this->getJson(vehicleMetricsUrl('vehicles', $filters))->assertOk()->json('data');
     $report = app(TicketMetricsReport::class)->build(TicketMetricsFilters::fromValidated(['period' => 'all', 'vehicle_plate' => 'HFS4456']), true);
@@ -189,9 +158,10 @@ test('exports matched aggregate metrics when selected and keeps both formats pri
 });
 
 test('renders empty sets and preserves long model descriptions in both formats', function () {
+    $fixture = app(VehicleMetricsFixture::class);
     $long = str_repeat('Modelo estendido com versão e ano 2007. ', 151).'FINAL_MODELO_987';
-    $this->car->update(['model_description' => $long]);
-    $scope = ['vehicle_plate' => $this->car->plate, 'include_vehicle_statistics' => 1];
+    $fixture->car->update(['model_description' => $long]);
+    $scope = ['vehicle_plate' => $fixture->car->plate, 'include_vehicle_statistics' => 1];
     $pdf = $this->getJson(vehicleMetricsUrl('export', [...$scope, 'format' => 'pdf']))->assertOk()->getContent();
     preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);
     expect(count($pages[0]))->toBeGreaterThan(2);

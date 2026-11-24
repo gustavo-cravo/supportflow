@@ -1,11 +1,8 @@
 <?php
 
 use App\Models\Contact;
-use App\Models\Customer;
 use App\Models\ProblemCategory;
-use App\Models\ProblemSubcategory;
 use App\Models\SupportTicket;
-use App\Models\System;
 use App\Services\Reports\PdfTicketMetricsReport;
 use App\Services\Reports\TicketMetricsReport;
 use App\Services\Reports\XlsxTicketMetricsReport;
@@ -15,9 +12,11 @@ use App\Support\TicketMetricsFilters;
 use App\Support\TicketMetricsReportData;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Mockery\MockInterface;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\IOFactory;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use Tests\Support\TicketMetricsExportFixture;
 
 function exportUrl(string $format = 'xlsx', array $filters = []): string
 {
@@ -60,44 +59,7 @@ function reportSnapshot(): array
 
 beforeEach(function () {
     $this->travelTo(CarbonImmutable::parse('2026-11-23 12:00:00', TicketMetricsFilters::TIMEZONE));
-    $this->systems = collect(['Indicar', 'iLube', '.way'])->map(fn ($name) => System::create(['name' => $name]));
-    $contact = Contact::create(['name' => 'CONTATO_PRIVADO_7C52', 'phone' => '5511987654321', 'email' => 'privado7c52@example.test', 'notes' => 'OBSERVACAO_PRIVADA_7C52']);
-    $customer = Customer::create(['name' => 'CLIENTE_PRIVADO_7C52', 'document' => '01234567000189']);
-    $this->category = ProblemCategory::create(['name' => 'Falha de acesso']);
-    $this->other = ProblemCategory::create(['name' => 'Busca por placa']);
-    $this->category->systems()->attach($this->systems->pluck('id'), ['is_active' => true]);
-    $this->other->systems()->attach($this->systems[0]->id, ['is_active' => true]);
-    $this->login = ProblemSubcategory::create(['problem_category_id' => $this->category->id, 'name' => 'Sessão expirada']);
-    $this->credentials = ProblemSubcategory::create(['problem_category_id' => $this->category->id, 'name' => 'Credenciais inválidas']);
-    $this->plate = ProblemSubcategory::create(['problem_category_id' => $this->other->id, 'name' => 'Placa não encontrada']);
-    foreach ([$this->login, $this->credentials] as $subcategory) {
-        $subcategory->systems()->attach($this->systems->pluck('id'), ['is_active' => true, 'problem_category_id' => $this->category->id]);
-    }
-    $this->plate->systems()->attach($this->systems[0]->id, ['is_active' => true, 'problem_category_id' => $this->other->id]);
-    $rows = [
-        [0, $this->category->id, $this->login->id, 'open', '2026-11-01 00:00:00'],
-        [0, $this->category->id, $this->login->id, 'closed', '2026-11-23 23:59:59'],
-        [1, $this->category->id, $this->credentials->id, 'resolved', '2026-10-15 10:00:00'],
-        [1, $this->category->id, null, 'waiting', '2026-08-10 10:00:00'],
-        [2, null, null, 'open', '2026-11-15 10:00:00'],
-        [0, $this->other->id, $this->plate->id, 'closed', '2026-05-31 23:59:59'],
-        [0, $this->other->id, $this->plate->id, 'in_progress', '2026-11-24 00:00:00'],
-        [0, null, null, 'closed', '2026-06-01 00:00:00'],
-    ];
-    foreach ($rows as $row) {
-        $ticket = SupportTicket::make(['system_id' => $this->systems[$row[0]]->id, 'contact_id' => $contact->id, 'customer_id' => $customer->id,
-            'problem_category_id' => $row[1], 'problem_subcategory_id' => $row[2], 'status' => $row[3],
-            'title' => 'TITULO_INDIVIDUAL_7C52', 'description' => 'DESCRICAO_INDIVIDUAL_7C52', 'resolution' => 'RESOLUCAO_PRIVADA_7C52',
-        ])->forceFill(['created_at' => $row[4], 'updated_at' => $row[4]]);
-        $ticket->save();
-        if ($row[2] !== null) {
-            $ticket->problemSubcategories()->attach($row[2], ['problem_category_id' => $row[1]]);
-        }
-    }
-    $this->systems[1]->update(['is_active' => false]);
-    $this->category->update(['is_active' => false]);
-    $this->login->update(['is_active' => false]);
-    $this->category->systems()->updateExistingPivot($this->systems[0]->id, ['is_active' => false]);
+    app()->instance(TicketMetricsExportFixture::class, new TicketMetricsExportFixture);
 });
 
 afterEach(function () {
@@ -122,8 +84,9 @@ test('exports a complete valid PDF with metadata, embedded fonts, page numbers a
 });
 
 test('exports distinct ticket totals and every selected subcategory in PDF and Excel', function () {
+    $fixture = app(TicketMetricsExportFixture::class);
     $ticket = SupportTicket::where('created_at', '2026-11-01 00:00:00')->sole();
-    $ticket->problemSubcategories()->attach($this->credentials->id, ['problem_category_id' => $this->category->id]);
+    $ticket->problemSubcategories()->attach($fixture->credentials->id, ['problem_category_id' => $fixture->category->id]);
     $scope = ['period' => 'custom', 'date_from' => '2026-11-01', 'date_to' => '2026-11-01', 'status' => 'open'];
     $report = app(TicketMetricsReport::class)->build(TicketMetricsFilters::fromValidated($scope));
     expect($report->summary['total'])->toBe(1);
@@ -131,7 +94,7 @@ test('exports distinct ticket totals and every selected subcategory in PDF and E
     expect(array_column($report->categories[0]['subcategories'], 'percentage'))->toBe([100.0, 100.0]);
     $pdf = $this->getJson(exportUrl('pdf', $scope))->assertOk()->getContent();
     $streams = decodedPdfStreams($pdf);
-    foreach ([$this->login->name, $this->credentials->name] as $name) {
+    foreach ([$fixture->login->name, $fixture->credentials->name] as $name) {
         expect($streams)->toContain(mb_convert_encoding($name, 'UTF-16BE', 'UTF-8'));
     }
     expect($streams)->not->toContain(mb_convert_encoding('TITULO_INDIVIDUAL_7C52', 'UTF-16BE', 'UTF-8'));
@@ -140,20 +103,21 @@ test('exports distinct ticket totals and every selected subcategory in PDF and E
     expect($book->getSheetByName('Resumo Geral')->getCell('D13')->getValue())->toBe(1);
     expect($book->getSheetByName('Resumo Geral')->getCell('D18')->getValue())->toBe(2);
     expect($book->getSheetByName('Subcategorias')->rangeToArray('B5:E6'))->toBe([
-        [$this->login->name, $this->systems[0]->name, '1', '100.00%'],
-        [$this->credentials->name, $this->systems[0]->name, '1', '100.00%'],
+        [$fixture->login->name, $fixture->systems[0]->name, '1', '100.00%'],
+        [$fixture->credentials->name, $fixture->systems[0]->name, '1', '100.00%'],
     ]);
     $book->disconnectWorksheets();
 
-    $filtered = [...$scope, 'problem_subcategory_id' => $this->credentials->id];
+    $filtered = [...$scope, 'problem_subcategory_id' => $fixture->credentials->id];
     $report = app(TicketMetricsReport::class)->build(TicketMetricsFilters::fromValidated($filtered));
     expect($report->summary['total'])->toBe(1);
     expect($report->summary['subcategory_occurrences'])->toBe(1);
-    expect(array_column($report->categories[0]['subcategories'], 'name'))->toBe([$this->credentials->name]);
+    expect(array_column($report->categories[0]['subcategories'], 'name'))->toBe([$fixture->credentials->name]);
 });
 
 test('fits a small two-ticket report with two months and subcategories on one A4 portrait page', function () {
-    $filters = ['period' => 'all', 'system_id' => $this->systems[1]->id, 'problem_category_id' => $this->category->id];
+    $fixture = app(TicketMetricsExportFixture::class);
+    $filters = ['period' => 'all', 'system_id' => $fixture->systems[1]->id, 'problem_category_id' => $fixture->category->id];
     $this->getJson('/api/metrics/summary?'.http_build_query($filters))->assertOk()->assertJsonPath('data.total', 2);
     $pdf = $this->getJson(exportUrl('pdf', $filters))->assertOk()->getContent();
     preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);
@@ -221,20 +185,24 @@ test('uses calendar periods and inclusive Sao Paulo boundaries identically in ex
 ]);
 
 test('exports individual and combined filter results using the same filter object for both writers', function (string $case) {
+    $fixture = app(TicketMetricsExportFixture::class);
     $filters = match ($case) {
-        'system' => ['system_id' => $this->systems[1]->id],
+        'system' => ['system_id' => $fixture->systems[1]->id],
         'status' => ['status' => 'closed'],
         'not_closed' => ['status' => 'not_closed'],
-        'category' => ['problem_category_id' => $this->category->id],
-        'subcategory' => ['problem_subcategory_id' => $this->login->id],
+        'category' => ['problem_category_id' => $fixture->category->id],
+        'subcategory' => ['problem_subcategory_id' => $fixture->login->id],
         'unclassified' => ['classification' => 'unclassified'],
-        'without_subcategory' => ['classification' => 'without_subcategory', 'problem_category_id' => $this->category->id],
-        default => ['period' => 'custom', 'date_from' => '2026-11-23', 'date_to' => '2026-11-23', 'system_id' => $this->systems[0]->id, 'status' => 'closed', 'problem_category_id' => $this->category->id, 'problem_subcategory_id' => $this->login->id],
+        'without_subcategory' => ['classification' => 'without_subcategory', 'problem_category_id' => $fixture->category->id],
+        default => ['period' => 'custom', 'date_from' => '2026-11-23', 'date_to' => '2026-11-23', 'system_id' => $fixture->systems[0]->id, 'status' => 'closed', 'problem_category_id' => $fixture->category->id, 'problem_subcategory_id' => $fixture->login->id],
     };
     $filters = ['period' => 'all', ...$filters];
     $expected = $this->getJson('/api/metrics/summary?'.http_build_query($filters))->assertOk()->json('data.total');
-    $pdf = Mockery::mock(PdfTicketMetricsReport::class);
-    $pdf->shouldReceive('render')->once()->withArgs(fn (TicketMetricsReportData $data) => $data->summary['total'] === $expected)->andReturn('%PDF-test');
+    $pdf = Mockery::mock(PdfTicketMetricsReport::class, function (MockInterface $mock) use ($expected): void {
+        $mock->shouldReceive('render')->once()
+            ->withArgs(fn (TicketMetricsReportData $data) => $data->summary['total'] === $expected)
+            ->andReturn('%PDF-test');
+    });
     $this->app->instance(PdfTicketMetricsReport::class, $pdf);
     $this->getJson(exportUrl('pdf', $filters))->assertOk();
     $book = exportedWorkbook($this->getJson(exportUrl('xlsx', $filters))->assertOk()->getContent());
@@ -290,10 +258,11 @@ test('prevents individual and personal information from entering either actual o
 });
 
 test('treats formula-like registered names as literal strings in all worksheets', function (string $name) {
-    $this->systems[0]->update(['name' => $name]);
-    $this->category->update(['name' => $name]);
-    $this->login->update(['name' => $name]);
-    $book = exportedWorkbook($this->getJson(exportUrl('xlsx', ['period' => 'all', 'problem_category_id' => $this->category->id]))->assertOk()->getContent());
+    $fixture = app(TicketMetricsExportFixture::class);
+    $fixture->systems[0]->update(['name' => $name]);
+    $fixture->category->update(['name' => $name]);
+    $fixture->login->update(['name' => $name]);
+    $book = exportedWorkbook($this->getJson(exportUrl('xlsx', ['period' => 'all', 'problem_category_id' => $fixture->category->id]))->assertOk()->getContent());
     try {
         expect($book->getSheetByName('Resumo Geral')->getCell('B8')->getValue())->toBe($name);
         expect($book->getSheetByName('Categorias')->getCell('A5')->getValue())->toBe($name);
@@ -309,16 +278,18 @@ test('treats formula-like registered names as literal strings in all worksheets'
 })->with(['=1+1', '+SUM(A1:A2)', '-1+1', '@SUM(A1:A2)', '=HYPERLINK("https://example.test","Nome")']);
 
 test('escapes markup names in the PDF template instead of loading external images or scripts', function () {
+    $fixture = app(TicketMetricsExportFixture::class);
     $name = '<img src="https://example.test/private"> & Ação';
-    $this->systems[0]->update(['name' => $name]);
+    $fixture->systems[0]->update(['name' => $name]);
     $report = app(TicketMetricsReport::class)->build(TicketMetricsFilters::fromValidated(['period' => 'all']));
     $html = view('reports.ticket-metrics', ['report' => $report, 'charts' => []])->render();
     expect($html)->toContain(e($name))->not->toContain($name);
 });
 
 test('rejects invalid export formats, dates, IDs and classification combinations before rendering', function (array $filters, string $field) {
-    $renderer = Mockery::mock(PdfTicketMetricsReport::class);
-    $renderer->shouldNotReceive('render');
+    $renderer = Mockery::mock(PdfTicketMetricsReport::class, function (MockInterface $mock): void {
+        $mock->shouldNotReceive('render');
+    });
     $this->app->instance(PdfTicketMetricsReport::class, $renderer);
     $this->getJson('/api/metrics/export?'.http_build_query(['format' => 'pdf', ...$filters]))->assertUnprocessable()->assertJsonValidationErrors($field);
 })->with([
@@ -332,8 +303,9 @@ test('rejects invalid export formats, dates, IDs and classification combinations
 ]);
 
 test('requires a format and rejects a subcategory from another category', function () {
+    $fixture = app(TicketMetricsExportFixture::class);
     $this->getJson('/api/metrics/export')->assertUnprocessable()->assertJsonValidationErrors('format');
-    $this->getJson(exportUrl('pdf', ['problem_category_id' => $this->category->id, 'problem_subcategory_id' => $this->plate->id]))->assertUnprocessable()->assertJsonValidationErrors('problem_subcategory_id');
+    $this->getJson(exportUrl('pdf', ['problem_category_id' => $fixture->category->id, 'problem_subcategory_id' => $fixture->plate->id]))->assertUnprocessable()->assertJsonValidationErrors('problem_subcategory_id');
 });
 
 test('exports only read queries without changing any business records', function () {
@@ -353,27 +325,31 @@ test('exports only read queries without changing any business records', function
 });
 
 test('handles renderer failures as HTTP errors without leaking paths or delivering broken files', function (string $format) {
-    $renderer = Mockery::mock($format === 'pdf' ? PdfTicketMetricsReport::class : XlsxTicketMetricsReport::class);
-    $renderer->shouldReceive('render')->once()->andThrow(new RuntimeException('PRIVATE_SERVER_PATH_C:/secret/report'));
-    $this->app->instance($format === 'pdf' ? PdfTicketMetricsReport::class : XlsxTicketMetricsReport::class, $renderer);
+    $rendererClass = $format === 'pdf' ? PdfTicketMetricsReport::class : XlsxTicketMetricsReport::class;
+    $renderer = Mockery::mock($rendererClass, function (MockInterface $mock): void {
+        $mock->shouldReceive('render')->once()->andThrow(new RuntimeException('PRIVATE_SERVER_PATH_C:/secret/report'));
+    });
+    $this->app->instance($rendererClass, $renderer);
     $response = $this->getJson(exportUrl($format))->assertStatus(500)->assertJsonPath('message', 'Não foi possível gerar o relatório. Tente novamente.');
     expect($response->getContent())->not->toContain('PRIVATE_SERVER_PATH');
     expect($response->headers->get('Content-Disposition'))->toBeNull();
 })->with(['pdf', 'xlsx']);
 
 test('refuses inconsistent aggregate results instead of generating an incorrect report', function () {
-    $metrics = Mockery::mock(TicketMetrics::class);
-    $metrics->shouldReceive('summary')->once()->andReturn(['total' => 99, 'closed' => 0, 'not_closed' => 99, 'systems_count' => 0, 'unclassified' => 0]);
-    foreach (['systems', 'categories', 'subcategories', 'monthly'] as $method) {
-        $metrics->shouldReceive($method)->once()->andReturn([]);
-    }
+    $metrics = Mockery::mock(TicketMetrics::class, function (MockInterface $mock): void {
+        $mock->shouldReceive('summary')->once()->andReturn(['total' => 99, 'closed' => 0, 'not_closed' => 99, 'systems_count' => 0, 'unclassified' => 0]);
+        foreach (['systems', 'categories', 'subcategories', 'monthly'] as $method) {
+            $mock->shouldReceive($method)->once()->andReturn([]);
+        }
+    });
     expect(fn () => (new TicketMetricsReport($metrics, app(VehicleMetrics::class)))->build(TicketMetricsFilters::fromValidated([])))->toThrow(LogicException::class);
 });
 
 test('renders large category distributions across multiple valid PDF pages', function () {
+    $fixture = app(TicketMetricsExportFixture::class);
     for ($index = 0; $index < 40; $index++) {
         $category = ProblemCategory::create(['name' => 'Categoria '.str_pad((string) $index, 2, '0', STR_PAD_LEFT).' - análise de ocorrências e integração com nome extenso para paginação']);
-        SupportTicket::make(['system_id' => $this->systems[0]->id, 'contact_id' => Contact::first()->id, 'problem_category_id' => $category->id, 'title' => 'NUNCA_EXPORTAR_PAGINACAO', 'description' => 'NUNCA_EXPORTAR_DESCRICAO'])->save();
+        SupportTicket::make(['system_id' => $fixture->systems[0]->id, 'contact_id' => Contact::first()->id, 'problem_category_id' => $category->id, 'title' => 'NUNCA_EXPORTAR_PAGINACAO', 'description' => 'NUNCA_EXPORTAR_DESCRICAO'])->save();
     }
     $pdf = $this->getJson(exportUrl('pdf', ['period' => 'all']))->assertOk()->getContent();
     preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);

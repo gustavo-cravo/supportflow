@@ -191,6 +191,8 @@ php vendor/bin/phpstan analyse --no-progress
 
 O bootstrap da suíte força SQLite em memória. Os testes acionam `VehicleValidationSeeder` explicitamente nesse ambiente. O seeder é separado do `DatabaseSeeder` e rejeita conexões fora do SQLite em memória. A massa inclui duas marcas, veículos leves e pesados de uma mesma marca, placas dos dois padrões, veículos de marcas distintas com a mesma descrição, um veículo sem descrição, dois atendimentos para a mesma placa e um atendimento sem vínculo.
 
+Os testes de veículos, histórico, métricas veiculares e exportação preparam suas fixtures tipadas em `beforeEach`. O contêiner da aplicação de teste mantém uma instância por caso. Antes, as fixtures eram propriedades dinâmicas em `$this`. O Pest as disponibilizava em execução, mas o Intelephense sinalizava `P1014` porque essas propriedades não tinham declaração estática. Nos testes de exportação, os callbacks tipados com `MockInterface` tornam visíveis os métodos de configuração que o Mockery adiciona aos objetos simulados em execução.
+
 ## Métricas veiculares e relatórios
 
 Na aba **Métricas**, **Filtros veiculares** combina identificação, placa, marca, modelo e linha com período, status, sistema, categoria e subcategoria. Os filtros permanecem ativos ao recolher a seção. **Limpar filtros veiculares** conserva os demais filtros aplicados. A opção **Somente atendimentos sem veículo** desabilita filtros específicos de veículo.
@@ -212,3 +214,5 @@ Os agrupamentos usam os dados atuais do veículo. Alterar marca, modelo ou linha
 Em **Exportar relatório**, **Incluir estatísticas veiculares** vem desmarcada para PDF e Excel. Os filtros aplicam-se aos indicadores tradicionais mesmo com a opção desmarcada. Quando marcada, o PDF acrescenta as tabelas veiculares e o Excel acrescenta **Resumo veicular**, **Linhas veiculares**, **Marcas**, **Modelos**, **Problemas por marca**, **Problemas por modelo** e **Problemas por linha**. As planilhas preservam os valores quantitativos como números e as participações em formato percentual.
 
 Os arquivos contêm somente estatísticas agregadas. O critério de placa aparece como **Filtro de placa aplicado**, sem o termo usado. Placas cadastradas encontradas em rótulos descritivos são omitidas. O ranking por placa, os identificadores internos, as informações individuais de atendimentos, clientes e contatos ficam fora das exportações.
+
+O template PDF usa `@style` para as larguras calculadas das colunas e das barras. O Blade entrega CSS completo ao Dompdf. Essa forma evita que o validador do editor interprete a interpolação Blade como parte do valor CSS.
