@@ -11,6 +11,7 @@ import PageHeading from '@/components/PageHeading.vue'
 import RecordDetail from '@/components/RecordDetail.vue'
 import StatePanel from '@/components/StatePanel.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import TicketPdfExportModal from '@/components/TicketPdfExportModal.vue'
 import VehicleIdentity from '@/components/VehicleIdentity.vue'
 const route = useRoute(),
     { notify } = useNotifications()
@@ -20,6 +21,7 @@ const ticket = ref(null),
     status = ref(''),
     busy = ref(false),
     closing = ref(false),
+    exporting = ref(false),
     quickView = ref('')
 const subcategories = computed(() => ticketSubcategories(ticket.value))
 const historyReturn = computed(() => {
@@ -87,6 +89,8 @@ onBeforeUnmount(() => controller.abort())
             :title="ticket.title"
             :eyebrow="'ATENDIMENTO #' + String(ticket.id).padStart(4, '0')"
             :description="'Aberto em ' + formatDate(ticket.created_at)"
+            ><button class="btn btn-secondary" type="button" @click="exporting = true">
+                <AppIcon name="download" :size="16" />Exportar PDF</button
             ><RouterLink
                 class="btn btn-secondary"
                 :to="{
@@ -373,6 +377,7 @@ onBeforeUnmount(() => controller.abort())
             :record="ticket[quickView]"
             read-only
             @close="quickView = ''" />
+        <TicketPdfExportModal v-if="exporting" :ticket="ticket" @close="exporting = false" />
         <CloseTicketModal
             v-if="closing"
             :ticket="ticket"

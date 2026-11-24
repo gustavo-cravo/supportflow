@@ -1,3 +1,5 @@
+import { toDateInput } from '@/utils/format'
+
 export class ApiError extends Error {
     constructor(status, payload = {}) {
         payload = payload && typeof payload === 'object' ? payload : {}
@@ -22,7 +24,7 @@ export function queryString(params = {}) {
 }
 export async function request(
     path,
-    { method = 'GET', data, params, signal, responseType = 'json' } = {},
+    { method = 'GET', data, params, signal, responseType = 'json', downloadPolicy } = {},
 ) {
     const query = queryString(params)
     let response
@@ -36,7 +38,9 @@ export async function request(
             headers: {
                 Accept:
                     responseType === 'blob'
-                        ? 'application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json'
+                        ? downloadPolicy
+                            ? downloadPolicy.contentType + ', application/json'
+                            : 'application/pdf, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/json'
                         : 'application/json',
                 ...(data !== undefined ? { 'Content-Type': 'application/json' } : {}),
             },
@@ -52,19 +56,21 @@ export async function request(
             'application/pdf': 'pdf',
             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
         }[contentType]
-        if (!extension) throw new ApiError(502)
+        if (!extension || (downloadPolicy && contentType !== downloadPolicy.contentType))
+            throw new ApiError(502)
         try {
             const blob = await response.blob()
             if (!blob.size) throw new Error('Empty report')
             const suggested = response.headers
                 .get('Content-Disposition')
                 ?.match(/filename="?([^";]+)"?/i)?.[1]
+            const pattern =
+                downloadPolicy?.filenamePattern ??
+                /^supportflow_relatorio_\d{4}-\d{2}-\d{2}\.(pdf|xlsx)$/
             const filename =
-                suggested &&
-                /^supportflow_relatorio_\d{4}-\d{2}-\d{2}\.(pdf|xlsx)$/.test(suggested) &&
-                suggested.endsWith('.' + extension)
+                suggested && pattern.test(suggested) && suggested.endsWith('.' + extension)
                     ? suggested
-                    : 'supportflow_relatorio.' + extension
+                    : (downloadPolicy?.fallbackFilename ?? 'supportflow_relatorio.' + extension)
             return { blob, filename }
         } catch (error) {
             if (signal?.aborted) throw error
@@ -85,4 +91,18 @@ export const api = {
     post: (path, data = {}) => request(path, { method: 'POST', data }),
     patch: (path, data) => request(path, { method: 'PATCH', data }),
     download: (path, params, signal) => request(path, { params, signal, responseType: 'blob' }),
+    downloadTicketPdf: (id, data, signal) => {
+        const number = String(id).padStart(4, '0')
+        return request('support-tickets/' + id + '/export/pdf', {
+            method: 'POST',
+            data,
+            signal,
+            responseType: 'blob',
+            downloadPolicy: {
+                contentType: 'application/pdf',
+                filenamePattern: /^supportflow-atendimento-\d{4,}-\d{4}-\d{2}-\d{2}\.pdf$/,
+                fallbackFilename: `supportflow-atendimento-${number}-${toDateInput(new Date()).slice(0, 10)}.pdf`,
+            },
+        })
+    },
 }

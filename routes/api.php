@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExportSupportTicketPdfController;
 use App\Http\Controllers\Api\ExportTicketMetricsController;
 use App\Http\Controllers\Api\KnowledgeArticleController;
 use App\Http\Controllers\Api\PendingTaskController;
@@ -44,6 +45,7 @@ Route::apiResource('support-tickets', SupportTicketController::class)
     ->parameters(['support-tickets' => 'supportTicket'])->except('destroy');
 Route::patch('support-tickets/{supportTicket}/status', [SupportTicketController::class, 'status'])->name('support-tickets.status');
 Route::post('support-tickets/{supportTicket}/close', [SupportTicketController::class, 'close'])->name('support-tickets.close');
+Route::post('support-tickets/{supportTicket}/export/pdf', ExportSupportTicketPdfController::class)->name('support-tickets.export.pdf');
 Route::get('support-tickets/{supportTicket}/related', [SupportTicketController::class, 'related'])->name('support-tickets.related');
 Route::apiResource('pending-tasks', PendingTaskController::class)
     ->parameters(['pending-tasks' => 'pendingTask'])->except('destroy');

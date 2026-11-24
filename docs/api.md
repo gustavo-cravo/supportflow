@@ -84,14 +84,15 @@ O cadastro de marcas, a normalização de placas e o vínculo opcional estão no
 
 Operações adicionais:
 
-| Método | Caminho                              | Corpo / resultado                                                                                |
-| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------ |
-| PATCH  | `/api/support-tickets/{id}/status`   | `status` obrigatório; `confirm_open_tasks` opcional                                              |
-| POST   | `/api/support-tickets/{id}/close`    | Dados opcionais de resolução e confirmação; encerra individualmente                              |
-| GET    | `/api/support-tickets/{id}/related`  | Lista paginada do atendimento anterior e dos retornos diretamente ligados a este registro        |
-| GET    | `/api/vehicles/{id}/support-tickets` | Histórico paginado e totais do veículo, com filtros por sistema, classificação, status e período |
-| POST   | `/api/pending-tasks/{id}/complete`   | `completion_notes` opcional; conclui e registra a data                                           |
-| POST   | `/api/reminders/{id}/complete`       | Sem corpo; registra a conclusão                                                                  |
+| Método | Caminho                                | Corpo / resultado                                                                                |
+| ------ | -------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| PATCH  | `/api/support-tickets/{id}/status`     | `status` obrigatório; `confirm_open_tasks` opcional                                              |
+| POST   | `/api/support-tickets/{id}/close`      | Dados opcionais de resolução e confirmação; encerra individualmente                              |
+| POST   | `/api/support-tickets/{id}/export/pdf` | Gera o [PDF individual do atendimento](ticket-pdf-export.md), com seleção de seções              |
+| GET    | `/api/support-tickets/{id}/related`    | Lista paginada do atendimento anterior e dos retornos diretamente ligados a este registro        |
+| GET    | `/api/vehicles/{id}/support-tickets`   | Histórico paginado e totais do veículo, com filtros por sistema, classificação, status e período |
+| POST   | `/api/pending-tasks/{id}/complete`     | `completion_notes` opcional; conclui e registra a data                                           |
+| POST   | `/api/reminders/{id}/complete`         | Sem corpo; registra a conclusão                                                                  |
 
 A ativação/desativação de sistema utiliza `PATCH /api/systems/{id}` com `{"is_active": true}` ou `{"is_active": false}`.
 

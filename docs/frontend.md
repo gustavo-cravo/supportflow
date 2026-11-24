@@ -107,6 +107,8 @@ Para validar manualmente em uma base de testes migrada, abra **Veículos** pelo 
 
 ## Integração e regras preservadas
 
+Nos detalhes de um atendimento, **Exportar PDF** abre `TicketPdfExportModal`. O modal usa `AppModal`, as notificações e o download binário existentes. `api.downloadTicketPdf` envia as opções em JSON e aceita o PDF com o nome de arquivo definido pela API. O usuário permanece nos detalhes durante todo o fluxo. Consulte o [contrato de exportação individual](ticket-pdf-export.md).
+
 - As listagens utilizam `data`, `links` e `meta` do Laravel; não simulam paginação sobre uma lista local.
 - Seletores de relacionamento pesquisam na API e carregam páginas de 15 opções com "Carregar mais opções". Não há truncamento permanente no primeiro lote de cadastros. Seleções existentes são consultadas individualmente quando necessário.
 - Sistemas disponíveis para seleção em novo atendimento são filtrados por `is_active=1`. O sistema inativo atual de um histórico continua visível e pode ser mantido. A validação definitiva continua no backend.

@@ -84,6 +84,53 @@ describe('binary API downloads', () => {
         caller.abort()
         expect(await result).toBe(caller.signal.reason)
     })
+
+    it('posts section flags for an individual PDF and preserves its safe filename', async () => {
+        const response = fileResponse('application/pdf', 'pdf')
+        response.headers.set(
+            'Content-Disposition',
+            'attachment; filename="supportflow-atendimento-0003-2026-11-24.pdf"',
+        )
+        const fetcher = vi.fn().mockResolvedValue(response)
+        vi.stubGlobal('fetch', fetcher)
+        const sections = { include_vehicle: false, include_resolution: true }
+        const file = await api.downloadTicketPdf(3, sections)
+        expect(file.filename).toBe('supportflow-atendimento-0003-2026-11-24.pdf')
+        expect(fetcher).toHaveBeenCalledWith(
+            '/api/support-tickets/3/export/pdf',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify(sections),
+                headers: {
+                    Accept: 'application/pdf, application/json',
+                    'Content-Type': 'application/json',
+                },
+            }),
+        )
+    })
+
+    it('rejects an Excel response for a ticket and uses a safe São Paulo date for an invalid attachment name', async () => {
+        vi.useFakeTimers()
+        vi.setSystemTime(new Date('2026-11-25T02:30:00Z'))
+        vi.stubGlobal(
+            'fetch',
+            vi
+                .fn()
+                .mockResolvedValue(
+                    fileResponse(
+                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        'xlsx',
+                    ),
+                ),
+        )
+        await expect(api.downloadTicketPdf(3, {})).rejects.toMatchObject({ status: 502 })
+        const pdf = fileResponse('application/pdf', 'pdf')
+        pdf.headers.set('Content-Disposition', 'attachment; filename="../../privado.pdf"')
+        vi.stubGlobal('fetch', vi.fn().mockResolvedValue(pdf))
+        expect((await api.downloadTicketPdf(3, {})).filename).toBe(
+            'supportflow-atendimento-0003-2026-11-24.pdf',
+        )
+    })
 })
 
 it('initiates a browser download and then removes the link and releases the object URL', async () => {
