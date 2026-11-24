@@ -11,6 +11,7 @@ const props = defineProps({
 })
 const emit = defineEmits(['close'])
 const format = ref('pdf'),
+    includeVehicles = ref(false),
     busy = ref(false),
     error = ref(''),
     errors = ref([])
@@ -25,7 +26,11 @@ async function generate() {
     try {
         const file = await api.download(
             'metrics/export',
-            { ...props.filters, format: format.value },
+            {
+                ...props.filters,
+                format: format.value,
+                ...(includeVehicles.value ? { include_vehicle_statistics: 1 } : {}),
+            },
             active.signal,
         )
         if (active.signal.aborted) return
@@ -80,6 +85,10 @@ onBeforeUnmount(() => controller?.abort())
                     <option value="xlsx">Excel (.xlsx) · Tabelas estatísticas</option>
                 </select>
             </div>
+            <label class="metrics-export-option">
+                <input v-model="includeVehicles" type="checkbox" :disabled="busy" />
+                Incluir estatísticas veiculares
+            </label>
             <p v-if="busy" class="metrics-export-progress muted" role="status">
                 Gerando o relatório… Aguarde o início do download.
             </p>
@@ -115,6 +124,12 @@ onBeforeUnmount(() => controller?.abort())
 }
 .metrics-export-progress {
     font-size: 12px;
+    margin-top: 16px;
+}
+.metrics-export-option {
+    display: flex;
+    align-items: center;
+    gap: 8px;
     margin-top: 16px;
 }
 </style>

@@ -17,6 +17,7 @@ import MetricsSystemsChart from './MetricsSystemsChart.vue'
 import MetricsMonthlyChart from './MetricsMonthlyChart.vue'
 import MetricsTicketsModal from './MetricsTicketsModal.vue'
 import MetricsExportModal from './MetricsExportModal.vue'
+import VehicleMetricsSection from './VehicleMetricsSection.vue'
 import './metrics.css'
 const applied = ref(metricParams(defaultMetricFilters()))
 const result = ref(null),
@@ -40,6 +41,12 @@ const subcategories = computed(
         result.value?.subcategories.filter(
             (row) => row.problem_category_id === selected.value?.problem_category_id,
         ) || [],
+)
+const subcategoryOccurrences = computed(() =>
+    subcategories.value.reduce(
+        (total, row) => total + (row.problem_subcategory_id === null ? 0 : row.total),
+        0,
+    ),
 )
 const indicators = [
     { key: 'total', label: 'Total de atendimentos', icon: 'tickets', color: 'blue' },
@@ -119,7 +126,7 @@ onBeforeUnmount(() => controller?.abort())
                 <AppIcon name="download" :size="16" />Exportar relatório
             </button></PageHeading
         >
-        <MetricsFilters @apply="load" @catalog="catalog = $event" />
+        <MetricsFilters :applied="applied" @apply="load" @catalog="catalog = $event" />
         <div :aria-busy="loading">
             <StatePanel v-if="loading || error" :loading="loading" :error="error" @retry="load()" />
             <ul v-if="error && fieldErrors.length" class="metrics-validation" role="alert">
@@ -243,9 +250,18 @@ onBeforeUnmount(() => controller?.abort())
                                         ? selected.category_name +
                                           ' · ' +
                                           metricNumber(selected.total) +
-                                          (selected.total === 1 ? ' ocorrência' : ' ocorrências')
+                                          (selected.total === 1
+                                              ? ' atendimento'
+                                              : ' atendimentos') +
+                                          ' · ' +
+                                          metricNumber(subcategoryOccurrences) +
+                                          (subcategoryOccurrences === 1 ? ' vínculo' : ' vínculos')
                                         : 'Selecione uma categoria no ranking acima.'
                                 }}
+                            </p>
+                            <p v-if="subcategoryOccurrences" class="metrics-caption">
+                                Cada vínculo conta uma ocorrência. O percentual usa os atendimentos
+                                da categoria e pode somar mais de 100%.
                             </p>
                         </div>
                     </div>
@@ -308,6 +324,7 @@ onBeforeUnmount(() => controller?.abort())
                 </section>
             </template>
         </div>
+        <VehicleMetricsSection :filters="applied" @tickets="drilldown = $event" />
         <MetricsTicketsModal
             v-if="drilldown"
             :filters="drilldown.filters"

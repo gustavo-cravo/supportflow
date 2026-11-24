@@ -4,10 +4,19 @@ namespace App\Http\Requests\Api;
 
 use App\Enums\PendingTaskStatus;
 use App\Enums\TicketStatus;
+use App\Enums\VehicleLine;
+use App\Support\VehicleTicketFilters;
 use Illuminate\Validation\Rule;
 
 class ListRequest extends ApiRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->routeIs('support-tickets.index') && $this->has('vehicle_plate')) {
+            $this->merge(['vehicle_plate' => VehicleTicketFilters::normalizePlate($this->input('vehicle_plate'))]);
+        }
+    }
+
     /** @return array<string, list<mixed>> */
     public function rules(): array
     {
@@ -18,6 +27,12 @@ class ListRequest extends ApiRequest
         ];
         if ($this->routeIs('systems.*')) {
             $rules += ['name' => ['nullable', 'string', 'max:255'], 'is_active' => ['sometimes', 'boolean']];
+        }
+        if ($this->routeIs('vehicles.index')) {
+            $rules += [
+                'brand_id' => ['nullable', 'integer', 'min:1'],
+                'vehicle_line' => ['nullable', Rule::enum(VehicleLine::class)],
+            ];
         }
         if ($this->routeIs('problem-categories.*', 'problem-subcategories.*')) {
             $rules += [
@@ -35,11 +50,12 @@ class ListRequest extends ApiRequest
         if ($this->routeIs('problem-subcategories.*')) {
             $rules += ['problem_category_id' => ['nullable', 'integer', 'min:1']];
         }
-        if ($this->routeIs('support-tickets.*')) {
+        if ($this->routeIs('support-tickets.*', 'vehicles.tickets')) {
             $rules += [
                 'system_id' => ['nullable', 'integer', 'min:1'],
                 'customer_id' => ['nullable', 'integer', 'min:1'],
                 'contact_id' => ['nullable', 'integer', 'min:1'],
+                'problem_subcategory_id' => ['nullable', 'integer', 'min:1'],
                 'status' => ['nullable', Rule::enum(TicketStatus::class)],
                 'created_from' => ['nullable', 'date_format:Y-m-d'],
                 'created_to' => ['nullable', 'date_format:Y-m-d'],
@@ -47,6 +63,12 @@ class ListRequest extends ApiRequest
             if ($this->filled('created_from')) {
                 $rules['created_to'][] = 'after_or_equal:created_from';
             }
+        }
+        if ($this->routeIs('support-tickets.index', 'vehicles.tickets')) {
+            $rules['problem_category_id'] = ['nullable', 'integer', 'min:1'];
+        }
+        if ($this->routeIs('support-tickets.index')) {
+            $rules += VehicleTicketFilters::rules();
         }
         if ($this->routeIs('pending-tasks.*')) {
             $rules += [
@@ -66,6 +88,16 @@ class ListRequest extends ApiRequest
         }
 
         return $rules;
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return [
+            ...parent::messages(),
+            'vehicle_plate.regex' => 'Informe até sete letras ou números da placa.',
+            'prohibited_if' => VehicleTicketFilters::CONTRADICTION,
+        ];
     }
 
     public function perPage(): int

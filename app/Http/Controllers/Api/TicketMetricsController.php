@@ -6,9 +6,11 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Api\TicketMetricsRequest;
 use App\Http\Resources\SupportTicketResource;
 use App\Services\TicketMetrics;
+use App\Services\VehicleMetrics;
 use App\Support\TicketMetricsFilters;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\DB;
 
 class TicketMetricsController extends Controller
 {
@@ -40,7 +42,10 @@ class TicketMetricsController extends Controller
         $filters = TicketMetricsFilters::fromValidated($request->validated());
         $rows = $metrics->subcategories($filters);
 
-        return response()->json(['data' => $rows, 'meta' => ['filters' => $filters->toArray(), 'total' => array_sum(array_column($rows, 'total'))]]);
+        return response()->json(['data' => $rows, 'meta' => [
+            'filters' => $filters->toArray(), 'total' => array_sum(array_column($rows, 'total')),
+            'occurrences' => array_sum(array_column(array_filter($rows, fn (array $row) => $row['problem_subcategory_id'] !== null), 'total')),
+        ]]);
     }
 
     public function monthly(TicketMetricsRequest $request, TicketMetrics $metrics): JsonResponse
@@ -49,6 +54,16 @@ class TicketMetricsController extends Controller
         $rows = $metrics->monthly($filters);
 
         return response()->json(['data' => $rows, 'meta' => ['filters' => $filters->toArray(), 'total' => array_sum(array_column($rows, 'total'))]]);
+    }
+
+    public function vehicles(TicketMetricsRequest $request, VehicleMetrics $metrics): JsonResponse
+    {
+        $filters = TicketMetricsFilters::fromValidated($request->validated());
+
+        return response()->json([
+            'data' => DB::transaction(fn () => $metrics->build($filters)),
+            'meta' => ['filters' => $filters->toArray()],
+        ]);
     }
 
     public function tickets(TicketMetricsRequest $request, TicketMetrics $metrics): AnonymousResourceCollection

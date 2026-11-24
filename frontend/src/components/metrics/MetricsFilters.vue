@@ -2,10 +2,17 @@
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { api } from '@/services/api'
 import { defaultMetricFilters, metricParams, metricPeriods } from '@/config/ticketMetrics'
+import { queryFilters, vehicleFilters } from '@/config/ticketFilters'
 import { ticketStatuses } from '@/utils/format'
+import FilterFields from '@/components/FilterFields.vue'
 import StatePanel from '@/components/StatePanel.vue'
+const props = defineProps({ applied: { type: Object, required: true } })
 const emit = defineEmits(['apply', 'catalog'])
 const draft = reactive(defaultMetricFilters())
+const vehicleDraft = ref({})
+const activeVehicleFilters = computed(
+    () => Object.keys(queryFilters(props.applied, vehicleFilters)).length,
+)
 const catalog = ref({ systems: [], categories: [], subcategories: [] })
 const loading = ref(true),
     error = ref(''),
@@ -97,11 +104,19 @@ function apply() {
         return
     }
     notice.value = ''
-    emit('apply', metricParams(draft))
+    const available = vehicleFilters.filter((field) => !field.disabledWhen?.(vehicleDraft.value))
+    emit('apply', { ...metricParams(draft), ...queryFilters(vehicleDraft.value, available) })
 }
 function reset() {
     Object.assign(draft, defaultMetricFilters())
+    vehicleDraft.value = {}
     apply()
+}
+function clearVehicleFilters() {
+    vehicleDraft.value = {}
+    const filters = { ...props.applied }
+    for (const { name } of vehicleFilters) delete filters[name]
+    emit('apply', filters)
 }
 loadCatalog()
 onBeforeUnmount(() => controller?.abort())
@@ -219,6 +234,23 @@ onBeforeUnmount(() => controller?.abort())
                 <button type="submit" class="btn btn-primary">Aplicar filtros</button
                 ><button type="button" class="text-button" @click="reset">Redefinir filtros</button>
             </div>
+            <details class="vehicle-filters metrics-vehicle-filters">
+                <summary>
+                    Filtros veiculares
+                    <span v-if="activeVehicleFilters" class="count-pill">
+                        {{ activeVehicleFilters }}
+                        {{ activeVehicleFilters === 1 ? 'ativo' : 'ativos' }}
+                    </span>
+                </summary>
+                <div class="filter-bar metrics-vehicle-fields">
+                    <FilterFields v-model="vehicleDraft" :fields="vehicleFilters" />
+                    <div class="filter-actions">
+                        <button class="text-button" type="button" @click="clearVehicleFilters">
+                            Limpar filtros veiculares
+                        </button>
+                    </div>
+                </div>
+            </details>
             <p
                 v-if="validation"
                 id="metrics-date-error"

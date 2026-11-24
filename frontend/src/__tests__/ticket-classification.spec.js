@@ -81,7 +81,8 @@ beforeEach(() => {
                     (record) =>
                         record.is_active &&
                         record.system_ids.includes(Number(params.system_id)) &&
-                        record.problem_category_id === Number(params.problem_category_id),
+                        record.problem_category_id === Number(params.problem_category_id) &&
+                        record.name.toLowerCase().includes((params.q || '').toLowerCase()),
                 ),
             )
         throw new Error('Unexpected API call: ' + endpoint)
@@ -130,10 +131,10 @@ describe('ticket classification form integration', () => {
         async (kind) => {
             await render()
             expect(wrapper.get('#ticket-problem_category_id').element.disabled).toBe(true)
-            expect(wrapper.get('#ticket-problem_subcategory_id').element.disabled).toBe(true)
+            expect(wrapper.get('#ticket-problem_subcategory_ids').element.disabled).toBe(true)
             await fillBase()
             if (kind !== 'none') await choose('problem_category_id', category.name)
-            if (kind === 'full') await choose('problem_subcategory_id', subcategory.name)
+            if (kind === 'full') await choose('problem_subcategory_ids', subcategory.name)
             await submit()
             expect(post).toHaveBeenCalledExactlyOnceWith(
                 'support-tickets',
@@ -143,7 +144,7 @@ describe('ticket classification form integration', () => {
                     system_id: 1,
                     contact_id: 4,
                     problem_category_id: kind === 'none' ? null : 5,
-                    problem_subcategory_id: kind === 'full' ? 8 : null,
+                    problem_subcategory_ids: kind === 'full' ? [8] : [],
                 }),
             )
             if (kind !== 'none')
@@ -167,15 +168,73 @@ describe('ticket classification form integration', () => {
         }
         await render(true)
         await choose('problem_category_id', category.name)
-        await choose('problem_subcategory_id', subcategory.name)
+        await choose('problem_subcategory_ids', subcategory.name)
         await submit()
         expect(patch).toHaveBeenCalledWith(
             'support-tickets/10',
             expect.objectContaining({
                 problem_category_id: 5,
-                problem_subcategory_id: 8,
+                problem_subcategory_ids: [8],
                 description: ticket.description,
             }),
+        )
+    })
+
+    it('searches, selects and submits multiple eligible subcategories without duplicates', async () => {
+        await render()
+        await fillBase()
+        await choose('problem_category_id', category.name)
+        await choose('problem_subcategory_ids', subcategory.name)
+        await wrapper.get('#ticket-problem_subcategory_ids').trigger('click')
+        await flushPromises()
+        expect(wrapper.get('#ticket-problem_subcategory_ids-options').text()).not.toContain(
+            subcategory.name,
+        )
+        await wrapper.get('[role="combobox"]').setValue('expirada')
+        await vi.waitFor(() => {
+            expect(get).toHaveBeenCalledWith(
+                'problem-subcategories',
+                expect.objectContaining({ q: 'expirada', system_id: 1, problem_category_id: 5 }),
+                expect.any(AbortSignal),
+            )
+        })
+        await wrapper.get('#ticket-problem_subcategory_ids-option-9 button').trigger('click')
+        expect(wrapper.findAll('.subcategory-tag')).toHaveLength(2)
+        await submit()
+        expect(post).toHaveBeenCalledExactlyOnceWith(
+            'support-tickets',
+            expect.objectContaining({ problem_subcategory_ids: [8, 9] }),
+        )
+    })
+
+    it('loads all saved subcategories and supports individual removal and clearing the list', async () => {
+        loaded = {
+            ...ticket,
+            problem_subcategory_ids: [8, 9],
+            problem_subcategories: [subcategory, otherSubcategory],
+        }
+        await render(true)
+        expect(wrapper.findAll('.subcategory-tag')).toHaveLength(2)
+        patch.mockRejectedValueOnce(
+            new ApiError(422, {
+                errors: { 'problem_subcategory_ids.0': ['O vínculo foi desativado.'] },
+            }),
+        )
+        await wrapper.get('[aria-label="Remover subcategoria Sessão expirada"]').trigger('click')
+        await submit()
+        expect(patch).toHaveBeenCalledWith(
+            'support-tickets/10',
+            expect.objectContaining({ problem_subcategory_ids: [8] }),
+        )
+        expect(wrapper.get('#ticket-problem_subcategory_ids-error').text()).toContain(
+            'O vínculo foi desativado.',
+        )
+        await textButton('Limpar subcategorias').trigger('click')
+        expect(wrapper.find('.subcategory-tags').exists()).toBe(false)
+        await submit()
+        expect(patch).toHaveBeenLastCalledWith(
+            'support-tickets/10',
+            expect.objectContaining({ problem_category_id: 5, problem_subcategory_ids: [] }),
         )
     })
 
@@ -193,7 +252,7 @@ describe('ticket classification form integration', () => {
             }
             await render(true)
             expect(wrapper.get('#ticket-problem_category_id').text()).toContain(category.name)
-            expect(wrapper.get('#ticket-problem_subcategory_id').text()).toContain(subcategory.name)
+            expect(wrapper.get('.subcategory-tags').text()).toContain(subcategory.name)
             expect(wrapper.text()).toContain('Classificação histórica preservada')
             await wrapper.get('#ticket-title').setValue('Título revisado')
             await submit()
@@ -201,7 +260,7 @@ describe('ticket classification form integration', () => {
                 'support-tickets/10',
                 expect.objectContaining({
                     problem_category_id: 5,
-                    problem_subcategory_id: 8,
+                    problem_subcategory_ids: [8],
                     title: 'Título revisado',
                 }),
             )
@@ -209,34 +268,27 @@ describe('ticket classification form integration', () => {
         },
     )
 
-    it('does not clear an old subcategory silently when category changes and blocks saving until resolved', async () => {
+    it('clears previous subcategories when the category changes and preserves the draft', async () => {
         await render(true)
         await choose('problem_category_id', otherCategory.name)
-        expect(wrapper.get('#ticket-problem_subcategory_id').text()).toContain(subcategory.name)
-        expect(wrapper.get('#ticket-problem_subcategory_id-error').text()).toContain('compatível')
-        await submit()
-        expect(patch).not.toHaveBeenCalled()
+        expect(wrapper.find('.subcategory-tags').exists()).toBe(false)
         expect(wrapper.get('#ticket-description').element.value).toBe(ticket.description)
-        await textButton('Remover subcategoria').trigger('click')
         await submit()
         expect(patch).toHaveBeenCalledWith(
             'support-tickets/10',
-            expect.objectContaining({ problem_category_id: 6, problem_subcategory_id: null }),
+            expect.objectContaining({ problem_category_id: 6, problem_subcategory_ids: [] }),
         )
     })
 
-    it('keeps an orphaned draft visible and offers an explicit removal even when its selector is disabled', async () => {
+    it('clears the dependent selections and disables the selector when the category is removed', async () => {
         await render(true)
         await wrapper.get('[aria-label="Remover categoria"]').trigger('click')
-        expect(wrapper.get('#ticket-problem_subcategory_id').element.disabled).toBe(true)
-        expect(wrapper.get('#ticket-problem_subcategory_id').text()).toContain(subcategory.name)
-        await submit()
-        expect(patch).not.toHaveBeenCalled()
-        await textButton('Remover subcategoria').trigger('click')
+        expect(wrapper.get('#ticket-problem_subcategory_ids').element.disabled).toBe(true)
+        expect(wrapper.find('.subcategory-tags').exists()).toBe(false)
         await submit()
         expect(patch).toHaveBeenCalledWith(
             'support-tickets/10',
-            expect.objectContaining({ problem_category_id: null, problem_subcategory_id: null }),
+            expect.objectContaining({ problem_category_id: null, problem_subcategory_ids: [] }),
         )
     })
 
@@ -249,7 +301,7 @@ describe('ticket classification form integration', () => {
             expect.objectContaining({
                 system_id: 2,
                 problem_category_id: 5,
-                problem_subcategory_id: 8,
+                problem_subcategory_ids: [8],
             }),
         )
     })
@@ -267,12 +319,15 @@ describe('ticket classification form integration', () => {
         await choose('system_id', 'iLube')
         await submit()
         expect(patch).not.toHaveBeenCalled()
-        expect(wrapper.get('#ticket-problem_subcategory_id').text()).toContain(subcategory.name)
-        await choose('problem_subcategory_id', otherSubcategory.name)
+        expect(wrapper.get('.subcategory-tags').text()).toContain(subcategory.name)
+        await wrapper
+            .get('[aria-label="Remover subcategoria Credenciais inválidas"]')
+            .trigger('click')
+        await choose('problem_subcategory_ids', otherSubcategory.name)
         await submit()
         expect(patch).toHaveBeenCalledWith(
             'support-tickets/10',
-            expect.objectContaining({ system_id: 2, problem_subcategory_id: 9 }),
+            expect.objectContaining({ system_id: 2, problem_subcategory_ids: [9] }),
         )
     })
 
@@ -290,7 +345,7 @@ describe('ticket classification form integration', () => {
             expect.objectContaining({
                 system_id: 3,
                 problem_category_id: null,
-                problem_subcategory_id: null,
+                problem_subcategory_ids: [],
             }),
         )
     })
@@ -298,11 +353,13 @@ describe('ticket classification form integration', () => {
     it('allows removing a historical subcategory while keeping an inactive category', async () => {
         loaded = { ...ticket, problem_category: { ...category, is_active: false } }
         await render(true)
-        await wrapper.get('[aria-label="Remover subcategoria"]').trigger('click')
+        await wrapper
+            .get('[aria-label="Remover subcategoria Credenciais inválidas"]')
+            .trigger('click')
         await submit()
         expect(patch).toHaveBeenCalledWith(
             'support-tickets/10',
-            expect.objectContaining({ problem_category_id: 5, problem_subcategory_id: null }),
+            expect.objectContaining({ problem_category_id: 5, problem_subcategory_ids: [] }),
         )
     })
 
@@ -317,7 +374,7 @@ describe('ticket classification form integration', () => {
         await submit()
         expect(post).toHaveBeenCalledWith(
             'support-tickets',
-            expect.objectContaining({ problem_category_id: null, problem_subcategory_id: null }),
+            expect.objectContaining({ problem_category_id: null, problem_subcategory_ids: [] }),
         )
     })
 
@@ -347,7 +404,7 @@ describe('ticket classification form integration', () => {
         expect(wrapper.get('#ticket-problem_category_id-error').text()).toContain(
             'Categoria desativada',
         )
-        expect(wrapper.get('#ticket-problem_subcategory_id').text()).toContain(subcategory.name)
+        expect(wrapper.get('.subcategory-tags').text()).toContain(subcategory.name)
         await submit()
         expect(patch).toHaveBeenCalledTimes(2)
     })
@@ -412,6 +469,18 @@ describe('scoped relation lookup races', () => {
 })
 
 describe('ticket classification detail', () => {
+    it('shows every linked subcategory including inactive history', async () => {
+        loaded = {
+            ...ticket,
+            problem_subcategories: [subcategory, { ...otherSubcategory, is_active: false }],
+        }
+        await render(true, TicketDetailView)
+        expect(wrapper.findAll('.subcategory-list li').map((item) => item.text())).toEqual([
+            subcategory.name,
+            otherSubcategory.name + ' · Inativa',
+        ])
+    })
+
     it.each(['none', 'category', 'inactive'])(
         'displays %s classification in the existing information panel and preserves quick view',
         async (kind) => {
@@ -431,7 +500,7 @@ describe('ticket classification detail', () => {
             expect(information('Categoria do problema').text()).toContain(
                 kind === 'none' ? 'Não classificado' : category.name,
             )
-            expect(information('Subcategoria do problema').text()).toContain(
+            expect(information('Subcategorias do problema').text()).toContain(
                 kind === 'none'
                     ? 'Não classificado'
                     : kind === 'category'

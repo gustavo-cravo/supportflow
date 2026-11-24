@@ -1,5 +1,7 @@
 # Backend de métricas dos atendimentos etapa 3
 
+A contagem atual de vínculos e os denominadores estão em [Múltiplas subcategorias por atendimento](ticket-multiple-subcategories.md). As regras de contagem desta etapa descrevem a seleção singular.
+
 A API estatística calcula indicadores, distribuições por sistema e classificação, evolução mensal e os atendimentos que compõem cada resultado. Todas as consultas usam os dados atuais de `support_tickets` e são somente de leitura. O Dashboard operacional e o frontend permanecem com seus comportamentos anteriores.
 
 ## Endpoints
@@ -13,6 +15,7 @@ Todos os endpoints abaixo são `GET` e usam os mesmos filtros.
 | `/api/metrics/categories`    | Ocorrências por categoria, participação no total filtrado e distribuição por sistema.                |
 | `/api/metrics/subcategories` | Ocorrências por categoria/subcategoria, participação dentro da categoria e distribuição por sistema. |
 | `/api/metrics/monthly`       | Série mensal em ordem cronológica.                                                                   |
+| `/api/metrics/vehicles`      | Resumo, distribuição, rankings e cruzamentos veiculares.                                             |
 | `/api/metrics/tickets`       | Atendimentos paginados responsáveis pelo resultado filtrado.                                         |
 
 Os agregados retornam `data` e `meta.filters`, com os filtros efetivamente aplicados. As distribuições e a série mensal também retornam `meta.total`, a soma dos volumes apresentados. A listagem de atendimentos reutiliza `SupportTicketResource` e a paginação atual, com `data`, `links`, `meta.total`, `meta.current_page` e demais metadados, acrescentando `meta.filters`.
@@ -35,6 +38,22 @@ Os agregados retornam `data` e `meta.filters`, com os filtros efetivamente aplic
 As referências precisam existir, mas sua situação atual ou disponibilidade atual em um sistema não impede uma consulta histórica. Por exemplo, sistema e categoria continuam sendo filtros válidos após a desabilitação de sua associação. Uma combinação válida sem ocorrências retorna totais zerados e listas vazias.
 
 Parâmetros inválidos e combinações incompatíveis retornam HTTP 422 no formato atual de validação do SupportFlow, com mensagens em `errors` por campo. Não existem operações de criação ou atualização nas rotas de métricas.
+
+### Parâmetros veiculares
+
+| Parâmetro             | Valores e comportamento                                                                                                          |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| `vehicle_presence`    | `with` ou `without`. Omita para pesquisar todos os atendimentos.                                                                 |
+| `vehicle_plate`       | Um a sete caracteres alfanuméricos após a normalização. Busca parcial ou completa, sem considerar caixa, hífens ou espaços.      |
+| `vehicle_brand_id`    | ID de uma marca existente.                                                                                                       |
+| `vehicle_model`       | Trecho literal da descrição do modelo atual, com até 255 caracteres.                                                             |
+| `vehicle_line`        | `light` ou `heavy`.                                                                                                              |
+| `group_vehicle_id`    | ID exato do veículo. Exclusivo de `/api/metrics/tickets`.                                                                        |
+| `group_vehicle_model` | Chave do agrupamento retornada em `model_key`, ou `missing`. Exclusivo de `/api/metrics/tickets`, sempre com `vehicle_brand_id`. |
+
+Os filtros veiculares aplicam-se junto aos filtros tradicionais em todas as rotas de métricas e na exportação. A API retorna 422 se `vehicle_presence=without` acompanhar algum filtro específico do veículo. O detalhamento acrescenta os critérios do agrupamento aos filtros aplicados. Por exemplo, uma linha de problema por modelo pode enviar também `system_id`, `problem_category_id` e `problem_subcategory_id`.
+
+`GET /api/metrics/vehicles` retorna `data.summary`, `data.recurrence`, `data.lines`, `data.brands`, `data.models`, `data.vehicles` e `data.problems`. Os rankings vêm em ordem decrescente de atendimentos. Cada linha de `data.problems.brand`, `.model` ou `.line` identifica o sistema e a classificação. `level=category` conta atendimentos distintos, e `level=subcategory` conta vínculos. O ranking interno de veículos contém a placa e o ID para abrir o histórico. Consulte as regras de agrupamento e os denominadores na [documentação da identificação veicular](vehicle-identification.md#métricas-veiculares-e-relatórios).
 
 ## Interpretação dos períodos
 

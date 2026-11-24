@@ -1,72 +1,44 @@
 <script setup>
-import { reactive, watch } from 'vue'
-import RelationSelect from './RelationSelect.vue'
+import { ref, watch } from 'vue'
+import FilterFields from './FilterFields.vue'
 import AppIcon from './AppIcon.vue'
-const props = defineProps({ fields: Array, values: Object })
+const props = defineProps({
+    fields: Array,
+    values: Object,
+    label: { type: String, default: 'Filtros da listagem' },
+    clearLabel: { type: String, default: 'Limpar' },
+})
 const emit = defineEmits(['apply'])
-const draft = reactive({})
+const draft = ref({})
 watch(
     () => props.values,
     (values) => {
-        for (const field of props.fields) draft[field.name] = values?.[field.name] ?? ''
+        for (const field of props.fields) draft.value[field.name] = values?.[field.name] ?? ''
     },
     { immediate: true, deep: true },
 )
 function clear() {
-    for (const field of props.fields) draft[field.name] = ''
+    for (const field of props.fields) draft.value[field.name] = ''
     emit('apply', {})
+}
+function apply() {
+    emit(
+        'apply',
+        Object.fromEntries(
+            props.fields
+                .filter((field) => !field.disabledWhen?.(draft.value))
+                .map(({ name }) => [name, draft.value[name]]),
+        ),
+    )
 }
 </script>
 <template>
-    <form
-        class="filter-bar"
-        aria-label="Filtros da listagem"
-        @submit.prevent="$emit('apply', { ...draft })"
-    >
-        <div
-            v-for="field in fields"
-            :key="field.name"
-            class="filter-field"
-            :class="{ 'filter-search': field.type === 'search' }"
-        >
-            <label :for="'filter-' + field.name">{{ field.label }}</label>
-            <div v-if="field.type === 'search'" class="search-input">
-                <AppIcon name="search" :size="17" /><input
-                    :id="'filter-' + field.name"
-                    v-model="draft[field.name]"
-                    type="search"
-                    :placeholder="field.placeholder"
-                    maxlength="255"
-                />
-            </div>
-            <RelationSelect
-                v-else-if="field.type === 'relation'"
-                :id="'filter-' + field.name"
-                v-model="draft[field.name]"
-                :endpoint="field.endpoint"
-                :label-field="field.labelField"
-            /><select
-                v-else-if="field.type === 'select'"
-                :id="'filter-' + field.name"
-                v-model="draft[field.name]"
-                class="input"
-            >
-                <option value="">Todos</option>
-                <option v-for="option in field.options" :key="option.value" :value="option.value">
-                    {{ option.label }}
-                </option></select
-            ><input
-                v-else
-                :id="'filter-' + field.name"
-                v-model="draft[field.name]"
-                class="input"
-                :type="field.type || 'text'"
-            />
-        </div>
+    <form class="filter-bar" :aria-label="label" @submit.prevent="apply">
+        <FilterFields v-model="draft" :fields="fields" />
         <div class="filter-actions">
             <button class="btn btn-secondary" type="submit">
                 <AppIcon name="filter" :size="16" />Filtrar</button
-            ><button class="text-button" type="button" @click="clear">Limpar</button>
+            ><button class="text-button" type="button" @click="clear">{{ clearLabel }}</button>
         </div>
     </form>
 </template>

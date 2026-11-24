@@ -26,12 +26,14 @@ class TicketMetrics
     public function summary(TicketMetricsFilters $filters): array
     {
         $row = $this->withCounts($this->query($filters))
-            ->selectRaw('COUNT(DISTINCT support_tickets.system_id) AS systems_count, SUM(CASE WHEN support_tickets.problem_category_id IS NULL THEN 1 ELSE 0 END) AS unclassified')->first();
+            ->selectRaw('COUNT(DISTINCT support_tickets.system_id) AS systems_count, SUM(CASE WHEN support_tickets.problem_category_id IS NULL THEN 1 ELSE 0 END) AS unclassified')
+            ->selectSub($this->subcategoryQuery($filters)->selectRaw('COUNT(ticket_subcategory.problem_subcategory_id)'), 'subcategory_occurrences')->first();
         $total = (int) $row->total;
         $closed = (int) $row->closed;
 
         return ['total' => $total, 'closed' => $closed, 'not_closed' => $total - $closed,
-            'systems_count' => (int) $row->systems_count, 'unclassified' => (int) $row->unclassified];
+            'systems_count' => (int) $row->systems_count, 'unclassified' => (int) $row->unclassified,
+            'subcategory_occurrences' => (int) $row->subcategory_occurrences];
     }
 
     /** @return list<array<string, mixed>> */
@@ -76,23 +78,26 @@ class TicketMetrics
         return $this->rank(array_values($groups), 'problem_category_id');
     }
 
-    /** @return list<array<string, mixed>> */
-    public function subcategories(TicketMetricsFilters $filters): array
+    /**
+     * @param  array<int|string, int>|null  $categoryTotals
+     * @return list<array<string, mixed>>
+     */
+    public function subcategories(TicketMetricsFilters $filters, ?array $categoryTotals = null): array
     {
-        $rows = $this->query($filters)->join('systems', 'systems.id', '=', 'support_tickets.system_id')
+        $rows = $this->subcategoryQuery($filters)->join('systems', 'systems.id', '=', 'support_tickets.system_id')
             ->leftJoin('problem_categories AS category', 'category.id', '=', 'support_tickets.problem_category_id')
-            ->leftJoin('problem_subcategories AS subcategory', 'subcategory.id', '=', 'support_tickets.problem_subcategory_id')
+            ->leftJoin('problem_subcategories AS subcategory', 'subcategory.id', '=', 'ticket_subcategory.problem_subcategory_id')
             ->select('support_tickets.problem_category_id', 'category.name AS category_name', 'category.is_active AS category_active',
-                'support_tickets.problem_subcategory_id', 'subcategory.name AS subcategory_name', 'subcategory.is_active AS subcategory_active',
+                'ticket_subcategory.problem_subcategory_id', 'subcategory.name AS subcategory_name', 'subcategory.is_active AS subcategory_active',
                 'systems.id AS system_id', 'systems.name AS system_name', 'systems.is_active AS system_active')
             ->selectRaw('COUNT(*) AS total')->groupBy('support_tickets.problem_category_id', 'category.name', 'category.is_active',
-                'support_tickets.problem_subcategory_id', 'subcategory.name', 'subcategory.is_active', 'systems.id', 'systems.name', 'systems.is_active')->get();
-        $categoryTotals = [];
+                'ticket_subcategory.problem_subcategory_id', 'subcategory.name', 'subcategory.is_active', 'systems.id', 'systems.name', 'systems.is_active')->get();
+        $categoryTotals ??= $this->query($filters)->selectRaw('support_tickets.problem_category_id, COUNT(*) AS total')
+            ->groupBy('support_tickets.problem_category_id')->pluck('total', 'problem_category_id')->all();
         $groups = [];
         foreach ($rows as $row) {
             $categoryKey = $row->problem_category_id ?? 'unclassified';
             $key = $categoryKey.':'.($row->problem_subcategory_id ?? 'none');
-            $categoryTotals[$categoryKey] = ($categoryTotals[$categoryKey] ?? 0) + (int) $row->total;
             $groups[$key] ??= ['problem_category_id' => $row->problem_category_id === null ? null : (int) $row->problem_category_id,
                 'category_name' => $row->category_name ?? 'Sem classificação', 'category_is_active' => $row->category_active === null ? null : (bool) $row->category_active,
                 'problem_subcategory_id' => $row->problem_subcategory_id === null ? null : (int) $row->problem_subcategory_id,
@@ -104,7 +109,7 @@ class TicketMetrics
                 'is_active' => (bool) $row->system_active, 'total' => (int) $row->total];
         }
         foreach ($groups as &$group) {
-            $group['category_total'] = $categoryTotals[$group['problem_category_id'] ?? 'unclassified'];
+            $group['category_total'] = (int) $categoryTotals[$group['problem_category_id'] ?? ''];
             $group['percentage'] = $this->percentage($group['total'], $group['category_total']);
             $group['systems'] = $this->rank($group['systems'], 'system_id');
         }
@@ -134,10 +139,21 @@ class TicketMetrics
     /** @return LengthAwarePaginator<int, SupportTicket> */
     public function tickets(TicketMetricsFilters $filters, int $perPage): LengthAwarePaginator
     {
-        $query = SupportTicket::with(['system', 'contact', 'customer', 'problemCategory.systems', 'problemSubcategory.systems', 'problemSubcategory.category']);
+        $query = SupportTicket::with(['system', 'contact', 'customer', 'vehicle.brand', ...SupportTicket::CLASSIFICATION_RELATIONS]);
         $filters->apply($query->getQuery());
 
         return $query->orderByDesc('support_tickets.created_at')->orderByDesc('support_tickets.id')->paginate($perPage)->withQueryString();
+    }
+
+    private function subcategoryQuery(TicketMetricsFilters $filters): Builder
+    {
+        $query = $this->query($filters)->leftJoin(SupportTicket::SUBCATEGORY_PIVOT.' AS ticket_subcategory',
+            'ticket_subcategory.support_ticket_id', '=', 'support_tickets.id');
+        if ($filters->subcategoryId !== null) {
+            $query->where('ticket_subcategory.problem_subcategory_id', $filters->subcategoryId);
+        }
+
+        return $query;
     }
 
     private function percentage(int $count, int $total): float

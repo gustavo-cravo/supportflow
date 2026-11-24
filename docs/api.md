@@ -2,6 +2,8 @@
 
 > Evolução na etapa 3: adicionado `GET /api/dashboard/summary` para o frontend Vue, sem mudança nas regras existentes. Consulte o contrato abaixo e as instruções em [frontend.md](frontend.md).
 
+As métricas veiculares usam `GET /api/metrics/vehicles` e os mesmos critérios dos outros endpoints de métricas. A exportação aceita a inclusão opcional das seções veiculares. [Consultas e detalhamento](ticket-metrics.md#parâmetros-veiculares) · [Exportações](statistical-reports.md#endpoint-e-parâmetros).
+
 ## Resumo do dashboard — etapa 3
 
 `GET /api/dashboard/summary` retorna HTTP 200 com `data` contendo:
@@ -76,31 +78,36 @@ Para **cada** recurso abaixo existem estas operações:
 | GET          | `/api/{recurso}/{id}` | Consultar            |
 | PUT ou PATCH | `/api/{recurso}/{id}` | Atualizar            |
 
-Recursos: `systems`, `contacts`, `customers`, `support-tickets`, `pending-tasks`, `reminders` e `knowledge-articles`.
+Recursos: `systems`, `contacts`, `customers`, `vehicle-brands`, `vehicles`, `support-tickets`, `pending-tasks`, `reminders` e `knowledge-articles`.
+
+O cadastro de marcas, a normalização de placas e o vínculo opcional estão no [guia de identificação veicular](vehicle-identification.md). A listagem de atendimentos aceita também [filtros veiculares](vehicle-identification.md#filtros-veiculares-dos-atendimentos).
 
 Operações adicionais:
 
-| Método | Caminho                             | Corpo / resultado                                                                         |
-| ------ | ----------------------------------- | ----------------------------------------------------------------------------------------- |
-| PATCH  | `/api/support-tickets/{id}/status`  | `status` obrigatório; `confirm_open_tasks` opcional                                       |
-| POST   | `/api/support-tickets/{id}/close`   | Dados opcionais de resolução e confirmação; encerra individualmente                       |
-| GET    | `/api/support-tickets/{id}/related` | Lista paginada do atendimento anterior e dos retornos diretamente ligados a este registro |
-| POST   | `/api/pending-tasks/{id}/complete`  | `completion_notes` opcional; conclui e registra a data                                    |
-| POST   | `/api/reminders/{id}/complete`      | Sem corpo; registra a conclusão                                                           |
+| Método | Caminho                              | Corpo / resultado                                                                                |
+| ------ | ------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| PATCH  | `/api/support-tickets/{id}/status`   | `status` obrigatório; `confirm_open_tasks` opcional                                              |
+| POST   | `/api/support-tickets/{id}/close`    | Dados opcionais de resolução e confirmação; encerra individualmente                              |
+| GET    | `/api/support-tickets/{id}/related`  | Lista paginada do atendimento anterior e dos retornos diretamente ligados a este registro        |
+| GET    | `/api/vehicles/{id}/support-tickets` | Histórico paginado e totais do veículo, com filtros por sistema, classificação, status e período |
+| POST   | `/api/pending-tasks/{id}/complete`   | `completion_notes` opcional; conclui e registra a data                                           |
+| POST   | `/api/reminders/{id}/complete`       | Sem corpo; registra a conclusão                                                                  |
 
 A ativação/desativação de sistema utiliza `PATCH /api/systems/{id}` com `{"is_active": true}` ou `{"is_active": false}`.
 
 ## Campos de escrita por recurso
 
-| Recurso              | Obrigatórios na criação                           | Opcionais                                                                                                                                                    |
-| -------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `systems`            | `name`                                            | `description`, `is_active` (padrão true)                                                                                                                     |
-| `contacts`           | `name`                                            | `phone`, `email`, `notes`                                                                                                                                    |
-| `customers`          | `name`, `document`                                | `phone`, `email`, `notes`                                                                                                                                    |
-| `support-tickets`    | `system_id`, `contact_id`, `title`, `description` | `customer_id`, `previous_ticket_id`, `status`, `resolution`, `verification_source`, `verified_at`, `verified_by`, `verification_notes`, `confirm_open_tasks` |
-| `pending-tasks`      | `description`                                     | `support_ticket_id`, `due_at`, `status`, `completion_notes`                                                                                                  |
-| `reminders`          | `title`, `scheduled_at`                           | `description`, `support_ticket_id`                                                                                                                           |
-| `knowledge-articles` | `problem`, `resolution_procedure`                 | `system_id`                                                                                                                                                  |
+| Recurso              | Obrigatórios na criação                           | Opcionais                                                                                                                                                                  |
+| -------------------- | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `systems`            | `name`                                            | `description`, `is_active` (padrão true)                                                                                                                                   |
+| `contacts`           | `name`                                            | `phone`, `email`, `notes`                                                                                                                                                  |
+| `customers`          | `name`, `document`                                | `phone`, `email`, `notes`                                                                                                                                                  |
+| `vehicle-brands`     | `name`                                            |                                                                                                                                                                            |
+| `vehicles`           | `brand_id`, `vehicle_line`, `plate`               | `model_description`                                                                                                                                                        |
+| `support-tickets`    | `system_id`, `contact_id`, `title`, `description` | `customer_id`, `vehicle_id`, `previous_ticket_id`, `status`, `resolution`, `verification_source`, `verified_at`, `verified_by`, `verification_notes`, `confirm_open_tasks` |
+| `pending-tasks`      | `description`                                     | `support_ticket_id`, `due_at`, `status`, `completion_notes`                                                                                                                |
+| `reminders`          | `title`, `scheduled_at`                           | `description`, `support_ticket_id`                                                                                                                                         |
+| `knowledge-articles` | `problem`, `resolution_procedure`                 | `system_id`                                                                                                                                                                |
 
 Todos os identificadores associados devem existir. Cliente e contato continuam independentes. Pendências e lembretes podem ser criados ou desvinculados com `support_ticket_id: null`. Artigos podem ser gerais com `system_id: null`.
 

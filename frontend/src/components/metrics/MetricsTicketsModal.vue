@@ -76,6 +76,15 @@ onBeforeUnmount(() => controller?.abort())
                                     <RouterLink class="table-link" :to="'/atendimentos/' + row.id"
                                         >#{{ row.id }} · {{ row.title }}</RouterLink
                                     >
+                                    <RouterLink
+                                        v-if="row.vehicle"
+                                        class="text-button"
+                                        :to="{
+                                            name: 'vehicle-history',
+                                            params: { id: row.vehicle.id },
+                                        }"
+                                        >Histórico de {{ row.vehicle.plate }}</RouterLink
+                                    >
                                 </td>
                                 <td>{{ row.system?.name }}</td>
                                 <td><StatusBadge :value="row.status" /></td>

@@ -47,6 +47,7 @@ const groups = [
             { to: '/contatos', label: 'Contatos', icon: 'users' },
             { to: '/clientes', label: 'Clientes', icon: 'building' },
             { to: '/sistemas', label: 'Sistemas', icon: 'layers' },
+            { to: '/veiculos', label: 'Veículos', icon: 'car' },
             { to: '/categorias-problemas', label: 'Categorias de Problemas', icon: 'layers' },
         ],
     },

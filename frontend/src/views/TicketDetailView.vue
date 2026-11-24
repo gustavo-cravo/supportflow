@@ -1,9 +1,9 @@
 <script setup>
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/services/api'
 import { resources } from '@/config/resources'
-import { displayStatus, formatDate, ticketStatuses } from '@/utils/format'
+import { displayStatus, formatDate, ticketStatuses, ticketSubcategories } from '@/utils/format'
 import { useNotifications } from '@/composables/useNotifications'
 import AppIcon from '@/components/AppIcon.vue'
 import CloseTicketModal from '@/components/CloseTicketModal.vue'
@@ -11,6 +11,7 @@ import PageHeading from '@/components/PageHeading.vue'
 import RecordDetail from '@/components/RecordDetail.vue'
 import StatePanel from '@/components/StatePanel.vue'
 import StatusBadge from '@/components/StatusBadge.vue'
+import VehicleIdentity from '@/components/VehicleIdentity.vue'
 const route = useRoute(),
     { notify } = useNotifications()
 const ticket = ref(null),
@@ -20,6 +21,17 @@ const ticket = ref(null),
     busy = ref(false),
     closing = ref(false),
     quickView = ref('')
+const subcategories = computed(() => ticketSubcategories(ticket.value))
+const historyReturn = computed(() => {
+    const target = route.query.retorno
+    return typeof target === 'string' && /^\/veiculos\/\d+\/historico(?:\?[^#]*)?$/.test(target)
+        ? target
+        : null
+})
+const vehicleHistory = computed(() => {
+    const path = '/veiculos/' + ticket.value?.vehicle?.id + '/historico'
+    return historyReturn.value?.split('?')[0] === path ? historyReturn.value : path
+})
 const controller = new AbortController()
 async function load() {
     loading.value = true
@@ -65,15 +77,23 @@ load()
 onBeforeUnmount(() => controller.abort())
 </script>
 <template>
-    <RouterLink to="/atendimentos" class="back-link"
-        ><AppIcon name="back" :size="16" />Voltar aos atendimentos</RouterLink
+    <RouterLink :to="historyReturn || '/atendimentos'" class="back-link"
+        ><AppIcon name="back" :size="16" />{{
+            historyReturn ? 'Voltar ao histórico veicular' : 'Voltar aos atendimentos'
+        }}</RouterLink
     ><StatePanel v-if="loading || error" :loading="loading" :error="error" @retry="load" /><template
         v-else-if="ticket"
         ><PageHeading
             :title="ticket.title"
             :eyebrow="'ATENDIMENTO #' + String(ticket.id).padStart(4, '0')"
             :description="'Aberto em ' + formatDate(ticket.created_at)"
-            ><RouterLink class="btn btn-secondary" :to="'/atendimentos/' + ticket.id + '/editar'"
+            ><RouterLink
+                class="btn btn-secondary"
+                :to="{
+                    name: 'ticket-edit',
+                    params: { id: ticket.id },
+                    query: historyReturn ? { retorno: historyReturn } : {},
+                }"
                 ><AppIcon name="edit" :size="16" />Editar</RouterLink
             ><button
                 v-if="ticket.status !== 'closed'"
@@ -259,16 +279,23 @@ onBeforeUnmount(() => controller.abort())
                             </dd>
                         </div>
                         <div>
-                            <dt>Subcategoria do problema</dt>
+                            <dt>Subcategorias do problema</dt>
                             <dd>
-                                {{
-                                    ticket.problem_subcategory?.name ||
-                                    (ticket.problem_category
-                                        ? 'Não informada'
-                                        : 'Não classificado')
-                                }}<small v-if="ticket.problem_subcategory?.is_active === false">
-                                    · Inativa</small
-                                >
+                                <ul v-if="subcategories.length" class="subcategory-list">
+                                    <li v-for="subcategory in subcategories" :key="subcategory.id">
+                                        {{ subcategory.name
+                                        }}<small v-if="subcategory.is_active === false">
+                                            · Inativa</small
+                                        >
+                                    </li>
+                                </ul>
+                                <template v-else>
+                                    {{
+                                        ticket.problem_category
+                                            ? 'Não informada'
+                                            : 'Não classificado'
+                                    }}
+                                </template>
                             </dd>
                         </div>
                         <div>
@@ -296,6 +323,16 @@ onBeforeUnmount(() => controller.abort())
                             <dd>{{ formatDate(ticket.closed_at) }}</dd>
                         </div>
                     </dl>
+                </section>
+                <section v-if="ticket.vehicle" class="panel detail-panel">
+                    <div class="panel-heading">
+                        <h2>Identificação veicular</h2>
+                        <AppIcon name="car" />
+                    </div>
+                    <VehicleIdentity :vehicle="ticket.vehicle" />
+                    <RouterLink class="section-bottom-link" :to="vehicleHistory">
+                        Histórico de atendimentos <AppIcon name="arrow" :size="15" />
+                    </RouterLink>
                 </section>
                 <section class="panel detail-panel">
                     <div class="panel-heading"><h2>Atendimentos relacionados</h2></div>

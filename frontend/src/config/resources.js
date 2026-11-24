@@ -214,7 +214,9 @@ export const resources = {
 }
 export const ticketClassificationFields = [
     relation('problem_category_id', 'Categoria do problema', 'problem-categories'),
-    relation('problem_subcategory_id', 'Subcategoria do problema', 'problem-subcategories'),
+    relation('problem_subcategory_ids', 'Subcategorias do problema', 'problem-subcategories', {
+        default: [],
+    }),
 ]
 export const ticketFields = [
     text('title', 'Título', {

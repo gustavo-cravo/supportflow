@@ -70,24 +70,26 @@ class XlsxTicketMetricsReport
             $summary->getStyle('A'.$row)->getFont()->setBold(true)->getColor()->setRGB('758096');
             $summary->getRowDimension($row)->setRowHeight(max(30, ceil(mb_strlen($criterion['value']) / 75) * 15 + 8));
         }
-        $this->text($summary, 'A12', 'Indicador');
-        $summary->mergeCells('A12:C12');
-        $this->text($summary, 'D12', 'Quantidade');
-        $this->header($summary, 'A12:D12');
-        foreach (['total' => 'Total de atendimentos', 'closed' => 'Encerrados', 'not_closed' => 'Não encerrados', 'systems_count' => 'Sistemas com atendimentos', 'unclassified' => 'Sem classificação'] as $key => $label) {
-            $row = 13 + array_search($key, ['total', 'closed', 'not_closed', 'systems_count', 'unclassified'], true);
+        $headerRow = max(12, count($report->criteria) + 6);
+        $this->text($summary, 'A'.$headerRow, 'Indicador');
+        $summary->mergeCells('A'.$headerRow.':C'.$headerRow);
+        $this->text($summary, 'D'.$headerRow, 'Quantidade');
+        $this->header($summary, 'A'.$headerRow.':D'.$headerRow);
+        $row = $headerRow + 1;
+        foreach (['total' => 'Total de atendimentos', 'closed' => 'Encerrados', 'not_closed' => 'Não encerrados', 'systems_count' => 'Sistemas com atendimentos', 'unclassified' => 'Sem classificação', 'subcategory_occurrences' => 'Vínculos com subcategorias'] as $key => $label) {
             $this->text($summary, 'A'.$row, $label);
             $summary->mergeCells('A'.$row.':C'.$row);
             $summary->setCellValueExplicit('D'.$row, $report->summary[$key], DataType::TYPE_NUMERIC);
             $summary->getStyle('D'.$row)->getNumberFormat()->setFormatCode('#,##0');
             $summary->getStyle('D'.$row)->getFont()->setSize(14)->setBold(true)->getColor()->setRGB('245CDA');
             $summary->getRowDimension($row)->setRowHeight(32);
+            $row++;
         }
-        $this->text($summary, 'A19', $report->summary['total'] === 0 ? 'Nenhum atendimento encontrado para os filtros selecionados.' : 'Resultados consolidados dos atendimentos, respeitando todos os filtros acima.');
-        $summary->mergeCells('A19:D19')->getRowDimension(19)->setRowHeight(30);
-        $summary->getStyle('A1:D19')->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_CENTER);
+        $this->text($summary, 'A'.$row, $report->summary['total'] === 0 ? 'Nenhum atendimento encontrado para os filtros selecionados.' : 'Resultados consolidados dos atendimentos, respeitando todos os filtros acima.');
+        $summary->mergeCells('A'.$row.':D'.$row)->getRowDimension($row)->setRowHeight(30);
+        $summary->getStyle('A1:D'.$row)->getAlignment()->setWrapText(true)->setVertical(Alignment::VERTICAL_CENTER);
         $summary->freezePane('A5');
-        $summary->getPageSetup()->setPrintArea('A1:D19');
+        $summary->getPageSetup()->setPrintArea('A1:D'.$row);
 
         $this->table($book, 'Por Sistema', ['Sistema', 'Atendimentos', 'Encerrados', 'Não encerrados', 'Participação no total'], array_map(fn (array $row): array => [$row['name'], $row['total'], $row['closed'], $row['not_closed'], $row['percentage'] / 100], $report->systems), [42, 20, 18, 22, 24], [5 => '0.00%']);
         $this->table($book, 'Categorias', ['Categoria', 'Ocorrências', 'Participação no total'], array_map(fn (array $row): array => [$row['name'], $row['total'], $row['percentage'] / 100], $report->categories), [64, 20, 25], [3 => '0.00%']);
@@ -99,8 +101,16 @@ class XlsxTicketMetricsReport
                 }
             }
         }
-        $this->table($book, 'Subcategorias', ['Categoria principal', 'Subcategoria', 'Sistema', 'Ocorrências', 'Participação na categoria'], $rows, [40, 40, 34, 18, 26], [5 => '0.00%'], 'Linhas por sistema. O percentual usa o total filtrado da categoria; somar os sistemas recupera a participação consolidada da subcategoria.');
+        $this->table($book, 'Subcategorias', ['Categoria principal', 'Subcategoria', 'Sistema', 'Ocorrências', 'Participação na categoria'], $rows, [40, 40, 34, 18, 26], [5 => '0.00%'], 'Cada vínculo conta uma ocorrência. O percentual usa os atendimentos da categoria e pode somar mais de 100% entre as subcategorias.');
         $this->table($book, 'Evolução Mensal', ['Mês', 'Atendimentos'], array_map(fn (array $row): array => [$this->monthDate($row['month']), $row['total']], $report->monthly), [38, 28], [1 => 'mm/yyyy']);
+        foreach ($report->vehicleTables as $table) {
+            $formats = array_fill_keys($table['percentages'], '0.00%');
+            $sheet = $this->table($book, $table['sheet'], $table['headers'], $table['rows'], $table['widths'], $formats, $table['note']);
+            foreach ($table['percentageRows'] as $index) {
+                $numberRow = $index + 5;
+                $sheet->getStyle('A'.$numberRow.':'.$sheet->getHighestColumn().$numberRow)->getNumberFormat()->setFormatCode('0.00%');
+            }
+        }
         $book->setActiveSheetIndex(0);
 
         return $book;
@@ -147,7 +157,7 @@ class XlsxTicketMetricsReport
      * @param  list<int>  $widths
      * @param  array<int, string>  $formats
      */
-    private function table(Spreadsheet $book, string $title, array $headers, array $rows, array $widths, array $formats = [], ?string $note = null): void
+    private function table(Spreadsheet $book, string $title, array $headers, array $rows, array $widths, array $formats = [], ?string $note = null): Worksheet
     {
         $sheet = $book->createSheet()->setTitle($title);
         $this->setup($sheet);
@@ -177,7 +187,7 @@ class XlsxTicketMetricsReport
                     $sheet->getStyle($cell)->getNumberFormat()->setFormatCode($formats[$column + 1] ?? '#,##0');
                 }
             }
-            $sheet->getRowDimension($index + 5)->setRowHeight(max(29, $lineCount * 16 + 8));
+            $sheet->getRowDimension($index + 5)->setRowHeight(min(405, max(29, $lineCount * 16 + 8)));
             if ($index % 2 === 1) {
                 $sheet->getStyle('A'.($index + 5).':'.$lastColumn.($index + 5))->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('F6F8FC');
             }
@@ -192,5 +202,7 @@ class XlsxTicketMetricsReport
         $sheet->freezePane('A5');
         $sheet->getPageSetup()->setRowsToRepeatAtTopByStartAndEnd(4, 4)->setPrintArea('A1:'.$lastColumn.$lastRow)
             ->setOrientation(count($headers) >= 5 ? PageSetup::ORIENTATION_LANDSCAPE : PageSetup::ORIENTATION_PORTRAIT);
+
+        return $sheet;
     }
 }

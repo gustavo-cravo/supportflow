@@ -85,7 +85,7 @@ test('default DatabaseSeeder keeps validation explicitly separate', function () 
 
 test('seed timestamps closures historical states and follow-up chains remain coherent', function () {
     $this->seed(SupportFlowValidationSeeder::class);
-    foreach (SupportTicket::with(['system', 'contact', 'customer', 'problemCategory', 'problemSubcategory', 'previousTicket'])->get() as $ticket) {
+    foreach (SupportTicket::with(['system', 'contact', 'customer', 'problemCategory', 'problemSubcategories', 'previousTicket'])->get() as $ticket) {
         expect($ticket->created_at->lte(now()))->toBeTrue();
         expect($ticket->created_at->lte($ticket->updated_at))->toBeTrue();
         expect($ticket->updated_at->lte(now()))->toBeTrue();
@@ -105,9 +105,11 @@ test('seed timestamps closures historical states and follow-up chains remain coh
             expect($ticket->status)->toBe('closed');
             expect($ticket->closed_at->lt($ticket->system->updated_at))->toBeTrue();
         }
-        if ($ticket->problemSubcategory) {
-            expect($ticket->problemSubcategory->problem_category_id)->toBe($ticket->problem_category_id);
+        foreach ($ticket->problemSubcategories as $subcategory) {
+            expect($subcategory->problem_category_id)->toBe($ticket->problem_category_id);
         }
+        expect($ticket->problemSubcategories->modelKeys())
+            ->toBe($ticket->problem_subcategory_id === null ? [] : [$ticket->problem_subcategory_id]);
         if (! $ticket->problem_category_id) {
             expect($ticket->problem_subcategory_id)->toBeNull();
         }
@@ -130,14 +132,14 @@ test('reference statistics independently match API totals without duplicate pivo
     $this->seed(SupportFlowValidationSeeder::class);
     $reference = (new SupportFlowValidationReference)->build();
     expect($reference['counts'])->toBe(validationCounts());
-    expect($reference['summary'])->toBe(['total' => 24, 'closed' => 10, 'not_closed' => 14, 'unclassified' => 3]);
+    expect($reference['summary'])->toBe(['total' => 24, 'closed' => 10, 'not_closed' => 14, 'unclassified' => 3, 'subcategory_occurrences' => 17]);
     expect(array_column($reference['systems'], 'total'))->toBe([13, 7, 4]);
     expect(array_column($reference['categories'], 'total'))->toBe([12, 5, 4, 3]);
     expect(array_column($reference['subcategories'], 'total'))->toBe([5, 3, 3, 2, 2, 2, 2, 2, 1, 1, 1]);
     expect($reference['statuses'])->toMatchArray(['open' => 4, 'in_progress' => 3, 'waiting' => 4, 'resolved' => 3, 'closed' => 10]);
     expect(array_values($reference['age_buckets']))->toBe([3, 1, 3, 3, 4, 3, 3, 4]);
     expect($reference['monthly'])->toBe(['2025-10' => 1, '2026-05' => 1, '2026-07' => 1, '2026-08' => 2, '2026-09' => 3, '2026-10' => 4, '2026-11' => 12]);
-    $this->getJson('/api/metrics/summary?period=all')->assertOk()->assertJsonPath('data', ['total' => 24, 'closed' => 10, 'not_closed' => 14, 'systems_count' => 3, 'unclassified' => 3]);
+    $this->getJson('/api/metrics/summary?period=all')->assertOk()->assertJsonPath('data', ['total' => 24, 'closed' => 10, 'not_closed' => 14, 'systems_count' => 3, 'unclassified' => 3, 'subcategory_occurrences' => 17]);
     foreach ($reference['filters'] as $filter) {
         $this->getJson('/api/metrics/summary?'.http_build_query($filter['params']))->assertOk()->assertJsonPath('data.total', $filter['total'])->assertJsonPath('data.closed', $filter['closed']);
     }

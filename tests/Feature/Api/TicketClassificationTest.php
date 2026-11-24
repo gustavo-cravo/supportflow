@@ -37,6 +37,7 @@ test('tickets can be created with a full, partial or absent classification', fun
     expect($data['description'])->toBe('Descrição original');
     expect($data['problem_category_id'])->toBe($classification['problem_category_id'] ?? null);
     expect($data['problem_subcategory_id'])->toBe($classification['problem_subcategory_id'] ?? null);
+    expect($data['problem_subcategory_ids'])->toBe($kind === 'full' ? [$this->subcategory->id] : []);
     expect($data['problem_category']['name'] ?? null)->toBe($kind === 'none' ? null : 'Falha de acesso');
     expect($data['problem_subcategory']['name'] ?? null)->toBe($kind === 'full' ? 'Credenciais inválidas' : null);
     if ($kind === 'full') {
@@ -50,9 +51,7 @@ test('legacy tickets can be classified later and classification can be changed o
     $path = '/api/support-tickets/'.$data['id'];
     $this->patchJson($path, $this->classification)->assertOk()->assertJsonPath('data.problem_subcategory.id', $this->subcategory->id);
     $this->patchJson($path, ['problem_category_id' => $this->otherCategory->id])
-        ->assertUnprocessable()->assertJsonValidationErrors('problem_subcategory_id');
-    $this->patchJson($path, ['problem_category_id' => $this->otherCategory->id, 'problem_subcategory_id' => null])
-        ->assertOk()->assertJsonPath('data.problem_category_id', $this->otherCategory->id)->assertJsonPath('data.problem_subcategory_id', null);
+        ->assertOk()->assertJsonPath('data.problem_category_id', $this->otherCategory->id)->assertJsonPath('data.problem_subcategory_ids', []);
     $this->patchJson($path, ['problem_category_id' => null, 'problem_subcategory_id' => null])
         ->assertOk()->assertJsonPath('data.problem_category', null)->assertJsonPath('data.description', 'Descrição original');
 });
@@ -63,9 +62,77 @@ test('a subcategory cannot be saved without its category or under another catego
     $this->postJson('/api/support-tickets', [...$this->payload, ...$this->classification, 'problem_category_id' => $this->otherCategory->id])
         ->assertUnprocessable()->assertJsonValidationErrors('problem_subcategory_id');
     $data = classifiedTicket($this->payload, $this->classification);
-    $this->patchJson('/api/support-tickets/'.$data['id'], ['problem_category_id' => null])
+    $this->patchJson('/api/support-tickets/'.$data['id'], ['problem_category_id' => null, 'problem_subcategory_id' => $this->subcategory->id])
         ->assertUnprocessable()->assertJsonValidationErrors('problem_subcategory_id');
     $this->getJson('/api/support-tickets/'.$data['id'])->assertJsonPath('data.problem_category_id', $this->category->id)->assertJsonPath('data.problem_subcategory_id', $this->subcategory->id);
+});
+
+test('creates, filters, replaces and clears multiple subcategories with a safe legacy projection', function () {
+    $second = ProblemSubcategory::create(['name' => 'Sessão expirada', 'problem_category_id' => $this->category->id]);
+    $third = ProblemSubcategory::create(['name' => 'Usuário bloqueado', 'problem_category_id' => $this->category->id]);
+    foreach ([$second, $third] as $record) {
+        $record->systems()->attach($this->system->id, ['is_active' => true, 'problem_category_id' => $this->category->id]);
+    }
+    $first = $this->subcategory->id;
+    $data = classifiedTicket($this->payload, ['problem_category_id' => $this->category->id, 'problem_subcategory_ids' => [$third->id, $first, $second->id]]);
+    expect($data['problem_subcategory_ids'])->toBe([$first, $second->id, $third->id]);
+    expect(array_column($data['problem_subcategories'], 'id'))->toBe($data['problem_subcategory_ids']);
+    expect($data['problem_subcategory_id'])->toBe($first);
+    $this->assertDatabaseCount('problem_subcategory_support_ticket', 3);
+    $this->getJson('/api/support-tickets?problem_subcategory_id='.$third->id)->assertOk()
+        ->assertJsonPath('meta.total', 1)->assertJsonPath('data.0.id', $data['id']);
+    $this->getJson('/api/support-tickets?problem_subcategory_id=999999')->assertOk()->assertJsonCount(0, 'data');
+    $path = '/api/support-tickets/'.$data['id'];
+    $this->patchJson($path, ['problem_subcategory_id' => null])->assertUnprocessable()->assertJsonValidationErrors('problem_subcategory_id');
+    $this->patchJson($path, ['problem_subcategory_id' => $first])
+        ->assertOk()->assertJsonPath('data.problem_subcategory_ids', $data['problem_subcategory_ids']);
+
+    $this->patchJson($path, ['problem_subcategory_ids' => [$second->id]])->assertOk()
+        ->assertJsonPath('data.problem_subcategory_id', $second->id);
+    $this->patchJson($path, ['problem_subcategory_ids' => [$second->id, $third->id]])->assertOk()
+        ->assertJsonPath('data.problem_subcategory_ids', [$second->id, $third->id]);
+    $this->patchJson($path, ['problem_subcategory_ids' => []])->assertOk()
+        ->assertJsonPath('data.problem_subcategories', [])->assertJsonPath('data.problem_subcategory_id', null);
+    $this->assertDatabaseCount('problem_subcategory_support_ticket', 0);
+});
+
+test('rejects individual invalid or duplicate list entries and mixed API contracts atomically', function () {
+    $wrong = ProblemSubcategory::create(['name' => 'Não encontrada', 'problem_category_id' => $this->otherCategory->id]);
+    $base = [...$this->payload, 'problem_category_id' => $this->category->id];
+    $id = $this->subcategory->id;
+    foreach ([
+        [[$id, $id], ['problem_subcategory_ids.0', 'problem_subcategory_ids.1']],
+        [[(string) $id, true], ['problem_subcategory_ids.0', 'problem_subcategory_ids.1']],
+        [[$id, 999999, $wrong->id], ['problem_subcategory_ids.1', 'problem_subcategory_ids.2']],
+        [[null, 'invalid'], ['problem_subcategory_ids.0', 'problem_subcategory_ids.1']],
+        [['nested' => $id], ['problem_subcategory_ids']],
+        [null, ['problem_subcategory_ids']],
+    ] as [$selection, $errors]) {
+        $this->postJson('/api/support-tickets', [...$base, 'problem_subcategory_ids' => $selection])
+            ->assertUnprocessable()->assertJsonValidationErrors($errors);
+    }
+    $this->postJson('/api/support-tickets', [...$base, 'problem_subcategory_ids' => [], 'problem_subcategory_id' => null])
+        ->assertUnprocessable()->assertJsonValidationErrors('problem_subcategory_ids');
+    $this->assertDatabaseCount('support_tickets', 0);
+});
+
+test('retains historical links independently when adding or removing eligible subcategories', function () {
+    $second = ProblemSubcategory::create(['name' => 'Sessão expirada', 'problem_category_id' => $this->category->id]);
+    $second->systems()->attach($this->system->id, ['is_active' => true, 'problem_category_id' => $this->category->id]);
+    $data = classifiedTicket($this->payload, $this->classification);
+    $this->subcategory->update(['is_active' => false]);
+    $path = '/api/support-tickets/'.$data['id'];
+    $ids = [$this->subcategory->id, $second->id];
+    $this->patchJson($path, ['problem_subcategory_ids' => $ids])->assertOk()
+        ->assertJsonPath('data.problem_subcategory_ids', $ids)->assertJsonPath('data.problem_subcategories.0.is_active', false);
+    $this->patchJson($path, ['system_id' => $this->otherSystem->id, 'problem_subcategory_ids' => $ids])
+        ->assertUnprocessable()->assertJsonValidationErrors(['problem_subcategory_ids.0', 'problem_subcategory_ids.1']);
+    $this->getJson($path)->assertJsonPath('data.problem_subcategory_ids', $ids);
+    $this->category->update(['is_active' => false]);
+    $this->patchJson($path, ['problem_subcategory_ids' => [$this->subcategory->id]])->assertOk()
+        ->assertJsonPath('data.problem_subcategory_ids', [$this->subcategory->id]);
+    $this->patchJson($path, ['problem_category_id' => $this->otherCategory->id])->assertOk()
+        ->assertJsonPath('data.problem_subcategory_ids', []);
 });
 
 test('invalid classification identifiers use field validation errors', function (string $field, mixed $value) {

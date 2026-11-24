@@ -50,6 +50,11 @@
         .monthly-layout img { display: block; width: 100%; height: 70pt; }
         .monthly-layout.single-month img { height: 50pt; }
         .monthly-layout .number { width: 50%; }
+        .vehicle-report td, .vehicle-report th { padding-right: 4pt; padding-left: 4pt; }
+        .vehicle-report .numeric { text-align: right; }
+        .vehicle-report-wide { font-size: 8.25pt; }
+        .vehicle-share { margin-top: 3pt; height: 3pt; background: #edf3fa; }
+        .vehicle-share div { height: 3pt; background: #245cda; }
     </style>
 </head>
 <body>
@@ -97,7 +102,7 @@
         @include('reports.partials.metrics-distribution', ['title' => 'Distribuição por categoria', 'label' => 'Categoria', 'rows' => $report->categories, 'compact' => false])
     @endif
     <h2>Distribuição por subcategoria</h2>
-    <p class="muted section-note">Participação dentro da respectiva categoria, considerando os filtros aplicados.</p>
+    <p class="muted section-note">{{ number_format($report->summary['subcategory_occurrences'], 0, ',', '.') }} vínculos com subcategorias. Cada vínculo conta uma ocorrência. O percentual usa os atendimentos da categoria e pode somar mais de 100%.</p>
     <table class="subcategories"><thead><tr>
         <th class="category">Categoria</th><th class="subcategory">Subcategoria</th><th class="number">Ocorrências</th><th class="number">Na categoria</th>
     </tr></thead><tbody>
@@ -130,5 +135,8 @@
     @empty
         <p class="empty">Sem meses com registros para os filtros selecionados.</p>
     @endforelse
+    @if ($report->vehicleTables !== [])
+        @include('reports.partials.vehicle-metrics')
+    @endif
 </body>
 </html>

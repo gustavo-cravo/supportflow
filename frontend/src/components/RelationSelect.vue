@@ -1,9 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { api } from '@/services/api'
 import AppIcon from './AppIcon.vue'
 const props = defineProps({
-    modelValue: [String, Number],
+    modelValue: [String, Number, Array],
+    multiple: Boolean,
+    placeholder: { type: String, default: 'Selecionar…' },
     endpoint: String,
     labelField: { type: String, default: 'name' },
     params: Object,
@@ -15,6 +17,7 @@ const props = defineProps({
     initialRecord: Object,
     emptyMessage: { type: String, default: 'Nenhum registro encontrado.' },
     clearLabel: { type: String, default: 'Limpar seleção' },
+    searchLabel: { type: String, default: 'Pesquisar opções' },
 })
 const emit = defineEmits(['update:modelValue', 'select'])
 const open = ref(false),
@@ -34,7 +37,12 @@ const label = (record) =>
         ? (props.endpoint === 'support-tickets' ? '#' + record.id + ' · ' : '') +
           record[props.labelField]
         : ''
-const visible = computed(() => rows.value.filter((row) => row.id !== props.excludeId))
+const selectedIds = computed(() => new Set(props.multiple ? props.modelValue.map(String) : []))
+const visible = computed(() =>
+    rows.value.filter(
+        (row) => row.id !== props.excludeId && !selectedIds.value.has(String(row.id)),
+    ),
+)
 async function load(page = 1) {
     if (props.disabled) return
     controller?.abort()
@@ -60,12 +68,30 @@ async function load(page = 1) {
 }
 async function toggle() {
     if (props.disabled) return
-    open.value = !open.value
     if (open.value) {
-        search.value = ''
-        await load()
-        searchInput.value?.focus()
+        close()
+        return
     }
+    search.value = ''
+    rows.value = []
+    meta.value = null
+    open.value = true
+    load()
+    await nextTick()
+    searchInput.value?.focus()
+}
+function cancelSearch() {
+    clearTimeout(timer)
+    version++
+    controller?.abort()
+}
+function close() {
+    cancelSearch()
+    open.value = false
+    loading.value = false
+}
+function onFocusOut(event) {
+    if (open.value && !event.currentTarget.contains(event.relatedTarget)) close()
 }
 function loadMore() {
     // The button disappears on the last page. Keep focus inside the popover
@@ -73,27 +99,43 @@ function loadMore() {
     searchInput.value?.focus()
     load(meta.value.current_page + 1)
 }
+function retry() {
+    searchInput.value?.focus()
+    load()
+}
 function select(row) {
-    selected.value = row
-    emit('select', row)
-    emit('update:modelValue', row.id)
-    open.value = false
+    if (props.multiple) {
+        if (selectedIds.value.has(String(row.id))) return
+        emit('select', row)
+        emit('update:modelValue', [...props.modelValue, row.id])
+    } else {
+        selected.value = row
+        emit('select', row)
+        emit('update:modelValue', row.id)
+    }
+    close()
     document.getElementById(props.id)?.focus()
 }
 function clear() {
     selected.value = null
     emit('select', null)
     emit('update:modelValue', null)
-    open.value = false
+    close()
+    document.getElementById(props.id)?.focus()
 }
 function onSearch() {
-    clearTimeout(timer)
+    cancelSearch()
+    rows.value = []
+    meta.value = null
+    active.value = 0
+    error.value = ''
+    loading.value = true
     timer = setTimeout(() => load(), 250)
 }
 function onKey(event) {
     if (event.key === 'ArrowDown') {
         event.preventDefault()
-        active.value = Math.min(active.value + 1, visible.value.length - 1)
+        active.value = Math.min(active.value + 1, Math.max(0, visible.value.length - 1))
     }
     if (event.key === 'ArrowUp') {
         event.preventDefault()
@@ -105,13 +147,14 @@ function onKey(event) {
     }
     if (event.key === 'Escape') {
         event.stopPropagation()
-        open.value = false
+        close()
         document.getElementById(props.id)?.focus()
     }
 }
 watch(
     () => [props.modelValue, props.initialRecord],
-    async ([value]) => {
+    async ([value], _previous, onCleanup) => {
+        if (props.multiple) return
         if (!value) {
             selected.value = null
             return
@@ -121,11 +164,14 @@ watch(
             return
         }
         if (String(selected.value?.id) === String(value)) return
+        selected.value = null
+        const detail = new AbortController()
+        onCleanup(() => detail.abort())
         try {
-            const result = await api.get(props.endpoint + '/' + value)
-            if (String(props.modelValue) === String(value)) selected.value = result.data
+            const result = await api.get(props.endpoint + '/' + value, undefined, detail.signal)
+            if (!detail.signal.aborted) selected.value = result.data
         } catch {
-            if (String(props.modelValue) === String(value))
+            if (!detail.signal.aborted)
                 selected.value = { id: value, [props.labelField]: 'Registro #' + value }
         }
     },
@@ -134,9 +180,7 @@ watch(
 watch(
     () => props.params,
     () => {
-        clearTimeout(timer)
-        version++
-        controller?.abort()
+        cancelSearch()
         rows.value = []
         meta.value = null
         loading.value = false
@@ -147,29 +191,13 @@ watch(
 watch(
     () => props.disabled,
     (disabled) => {
-        if (!disabled) return
-        open.value = false
-        version++
-        controller?.abort()
-        loading.value = false
-        clearTimeout(timer)
+        if (disabled) close()
     },
 )
-onBeforeUnmount(() => {
-    clearTimeout(timer)
-    version++
-    controller?.abort()
-})
+onBeforeUnmount(cancelSearch)
 </script>
 <template>
-    <div
-        class="relation-select"
-        @focusout="
-            (event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) open = false
-            }
-        "
-    >
+    <div class="relation-select" @focusout="onFocusOut">
         <div class="relation-trigger">
             <button
                 :id="id"
@@ -185,11 +213,15 @@ onBeforeUnmount(() => {
                 @click="toggle"
             >
                 <span>{{
-                    selected ? label(selected) : modelValue ? 'Carregando seleção…' : 'Selecionar…'
+                    selected
+                        ? label(selected)
+                        : !multiple && modelValue
+                          ? 'Carregando seleção…'
+                          : placeholder
                 }}</span
                 ><AppIcon name="chevron" :size="15" /></button
             ><button
-                v-if="modelValue"
+                v-if="!multiple && modelValue"
                 class="icon-button relation-clear"
                 type="button"
                 :aria-label="clearLabel"
@@ -204,7 +236,7 @@ onBeforeUnmount(() => {
                 <AppIcon name="search" :size="16" /><input
                     ref="searchInput"
                     v-model="search"
-                    aria-label="Pesquisar opções"
+                    :aria-label="searchLabel"
                     role="combobox"
                     aria-autocomplete="list"
                     aria-expanded="true"
@@ -213,13 +245,14 @@ onBeforeUnmount(() => {
                         visible[active] ? id + '-option-' + visible[active].id : undefined
                     "
                     placeholder="Digite para pesquisar…"
+                    maxlength="255"
                     @input="onSearch"
                     @keydown="onKey"
                 />
             </div>
             <p v-if="error" class="field-error" role="alert">
                 {{ error }}
-                <button type="button" class="text-button" @click="load()">Tentar novamente</button>
+                <button type="button" class="text-button" @click="retry">Tentar novamente</button>
             </p>
             <p v-else-if="loading && !rows.length" class="lookup-hint" role="status">
                 Buscando opções…
@@ -230,11 +263,13 @@ onBeforeUnmount(() => {
                     :id="id + '-option-' + row.id"
                     :key="row.id"
                     role="option"
-                    :aria-selected="String(modelValue) === String(row.id)"
+                    :aria-selected="!multiple && String(modelValue) === String(row.id)"
                     :class="{ active: active === index }"
                 >
                     <button type="button" @click="select(row)">
-                        {{ label(row) }}<small v-if="row.is_active === false"> · Inativo</small>
+                        <slot name="option" :record="row">
+                            {{ label(row) }}<small v-if="row.is_active === false"> · Inativo</small>
+                        </slot>
                     </button>
                 </li>
             </ul>

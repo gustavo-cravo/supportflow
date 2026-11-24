@@ -19,7 +19,7 @@ final class SupportFlowValidationReference
     public function build(): array
     {
         $today = CarbonImmutable::now(TicketMetricsFilters::TIMEZONE)->startOfDay();
-        $tickets = SupportTicket::with(['system', 'problemCategory', 'problemSubcategory'])
+        $tickets = SupportTicket::with(['system', 'problemCategory', 'problemSubcategories'])
             ->whereLike('title', SupportFlowValidationSeeder::PREFIX.' ATE-% | %')->orderByDesc('created_at')->orderBy('title')->get();
         $ids = array_values($tickets->map(fn (SupportTicket $ticket): int => $ticket->id)->all());
         $counts = [];
@@ -33,7 +33,15 @@ final class SupportFlowValidationReference
             'closed' => $group->where('status', TicketStatus::Closed->value)->count(),
         ])->sortByDesc('total')->values()->all();
         $categories = $tickets->groupBy(fn ($row) => $row->problem_category_id ? $row->problemCategory->name : 'Sem classificação')->map(fn ($group, $name) => ['name' => $name, 'total' => $group->count()])->sortByDesc('total')->values()->all();
-        $subcategories = $tickets->groupBy(fn ($row) => ($row->problem_category_id ? $row->problemCategory->name : 'Sem classificação').' / '.($row->problem_subcategory_id ? $row->problemSubcategory->name : ($row->problem_category_id ? 'Sem subcategoria' : 'Sem classificação')))
+        $subcategories = $tickets->flatMap(function (SupportTicket $ticket) {
+            $category = $ticket->problemCategory->name ?? 'Sem classificação';
+            $names = $ticket->problemSubcategories->pluck('name')->all();
+            if ($names === []) {
+                $names = [$ticket->problem_category_id ? 'Sem subcategoria' : 'Sem classificação'];
+            }
+
+            return array_map(fn ($name) => $category.' / '.$name, $names);
+        })->groupBy(fn ($name) => $name)
             ->map(fn ($group, $name) => ['name' => $name, 'total' => $group->count()])->sortByDesc('total')->values()->all();
         $ageBuckets = [];
         foreach (['Hoje' => [0, 0], 'Ontem' => [1, 1], '2 a 7 dias' => [2, 7], '8 a 15 dias' => [8, 15], '16 a 30 dias' => [16, 30], '31 a 60 dias' => [31, 60], '61 a 90 dias' => [61, 90], 'Mais de 90 dias' => [91, PHP_INT_MAX]] as $label => [$from, $to]) {
@@ -64,7 +72,10 @@ final class SupportFlowValidationReference
 
         return [
             'reference_date' => $today->toDateString(), 'timezone' => TicketMetricsFilters::TIMEZONE,
-            'counts' => $counts, 'summary' => $this->filtered($ids, ['period' => 'all']),
+            'counts' => $counts, 'summary' => [
+                ...$this->filtered($ids, ['period' => 'all']),
+                'subcategory_occurrences' => (int) $tickets->sum(fn (SupportTicket $ticket): int => $ticket->problemSubcategories->count()),
+            ],
             'systems' => $systems, 'categories' => $categories, 'subcategories' => $subcategories,
             'statuses' => $tickets->groupBy('status')->map->count()->all(), 'age_buckets' => $ageBuckets,
             'monthly' => $tickets->groupBy(fn ($ticket) => $ticket->created_at->format('Y-m'))->map->count()->sortKeys()->all(),
@@ -95,7 +106,7 @@ final class SupportFlowValidationReference
         $command->table(['Tabela', 'Registros SFT-QA'], $this->pairs($data['counts']));
         foreach (['systems' => 'Sistemas', 'categories' => 'Categorias', 'subcategories' => 'Subcategorias'] as $key => $title) {
             $command->comment($title);
-            $command->table(['Nome', 'Atendimentos'], array_map(fn ($row) => [$row['name'], $row['total']], $data[$key]));
+            $command->table(['Nome', $key === 'subcategories' ? 'Ocorrências' : 'Atendimentos'], array_map(fn ($row) => [$row['name'], $row['total']], $data[$key]));
         }
         $command->table(['Status', 'Quantidade'], $this->pairs($data['statuses']));
         $command->table(['Idade em dias de calendário', 'Quantidade'], $this->pairs($data['age_buckets']));

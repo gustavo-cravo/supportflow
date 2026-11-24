@@ -4,15 +4,34 @@ namespace App\Http\Requests\Api;
 
 use App\Enums\TicketStatus;
 use App\Models\ProblemSubcategory;
+use App\Support\VehicleTicketFilters;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class TicketMetricsRequest extends ApiRequest
 {
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('vehicle_plate')) {
+            $this->merge(['vehicle_plate' => VehicleTicketFilters::normalizePlate($this->input('vehicle_plate'))]);
+        }
+    }
+
     /** @return array<string, list<mixed>> */
     public function rules(): array
     {
+        $tickets = $this->routeIs('metrics.tickets');
+        $vehicleRules = VehicleTicketFilters::rules();
+        $vehicleRules['vehicle_brand_id'][] = 'exists:vehicle_brands,id';
+
         return [
+            ...$vehicleRules,
+            'group_vehicle_id' => $tickets
+                ? ['bail', 'sometimes', 'prohibited_if:vehicle_presence,without', 'required', 'integer', 'min:1', 'exists:vehicles,id']
+                : ['prohibited'],
+            'group_vehicle_model' => $tickets
+                ? ['bail', 'sometimes', 'prohibited_if:vehicle_presence,without', 'required', 'string', 'regex:/\A(?:missing|[0-9a-f]{64})\z/']
+                : ['prohibited'],
             'period' => ['sometimes', 'required', Rule::in(['this_month', 'last_30_days', 'last_3_months', 'last_6_months', 'this_year', 'all', 'custom'])],
             'date_from' => ['bail', 'required_if:period,custom', 'prohibited_unless:period,custom', 'date_format:Y-m-d', 'after_or_equal:1000-01-01', 'before:9999-12-31'],
             'date_to' => ['bail', 'required_if:period,custom', 'prohibited_unless:period,custom', 'date_format:Y-m-d', 'after_or_equal:date_from', 'before:9999-12-31'],
@@ -32,6 +51,9 @@ class TicketMetricsRequest extends ApiRequest
         return [function (Validator $validator): void {
             if ($validator->errors()->isNotEmpty()) {
                 return;
+            }
+            if ($this->filled('group_vehicle_model') && ! $this->filled('vehicle_brand_id')) {
+                $validator->errors()->add('vehicle_brand_id', 'Informe a marca para detalhar o modelo.');
             }
             if ($this->input('classification') === 'unclassified' && ($this->filled('problem_category_id') || $this->filled('problem_subcategory_id'))) {
                 $validator->errors()->add('classification', 'Sem classificação não pode ser combinado com uma categoria ou subcategoria específica.');
@@ -54,6 +76,8 @@ class TicketMetricsRequest extends ApiRequest
             'prohibited_unless' => 'Datas inicial e final só podem ser informadas no período personalizado.',
             'after_or_equal' => 'A data final deve ser igual ou posterior à inicial, e as datas devem estar no intervalo suportado.',
             'before' => 'Informe uma data anterior a 31/12/9999.',
+            'vehicle_plate.regex' => 'Informe até sete letras ou números da placa.',
+            'prohibited_if' => VehicleTicketFilters::CONTRADICTION,
         ];
     }
 }

@@ -1,5 +1,7 @@
 # Classificação de atendimentos etapa 2
 
+O contrato e o comportamento atuais estão em [Múltiplas subcategorias por atendimento](ticket-multiple-subcategories.md). Esta página registra a implantação da seleção singular.
+
 Os formulários atuais de cadastro e edição de atendimentos incluem **Categoria do problema** e **Subcategoria do problema**, ambas opcionais. A descrição do problema e os demais campos permanecem no mesmo formulário. A seção **Informações** dos detalhes apresenta os nomes da classificação, incluindo registros inativos, sem edição direta.
 
 ## Cadastro e edição
