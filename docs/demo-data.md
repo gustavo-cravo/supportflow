@@ -12,7 +12,7 @@ O comando anterior `php artisan db:seed --class=SupportFlowDemoSeeder` continua 
 
 O seeder recusa ambientes diferentes de `local` e `testing`, inclusive quando `db:seed --force` é utilizado. A conexão é aquela explicitamente configurada pelo usuário; `APP_ENV=local` não transforma um banco real em banco de testes. Para esta entrega, todas as execuções de validação ocorreram exclusivamente em SQLite isolado em memória, sem utilizar o MySQL configurado na aplicação.
 
-Não há exclusões, limpeza, `truncate`, alterações de esquema ou restauração de dados antigos. A implementação anterior de demonstração foi substituída por uma entrada de compatibilidade: os antigos registros `[DEMO SF]`, quando existentes, permanecem intactos e **não são convertidos nem removidos**.
+O seeder SFT-QA só cria e confere seus dados. A entrada de compatibilidade preserva os antigos registros `[DEMO SF]` quando existentes. A base veicular usa um procedimento próprio, descrito abaixo.
 
 ## Identidade e reexecução
 
@@ -213,3 +213,57 @@ Resultados executados nesta revisão:
 - API: opções dependentes, sistema inativo, históricos, filtros de pendências/lembretes, Dashboard, paginação, métricas e geração real de PDF/XLSX verificados. O XLSX contém os totais esperados e não contém identificadores ou campos individuais do conjunto.
 
 Limitações: a reexecução preserva as datas iniciais; registros preexistentes contribuem para o Dashboard; a validação de escrita desta entrega não utiliza o MySQL da aplicação; primeiras execuções simultâneas não são suportadas. Nenhuma dessas condições altera as regras do SupportFlow.
+
+## Base para métricas veiculares
+
+Em um banco separado de validação, configure `APP_ENV=local` ou `testing`, confira a conexão de destino e execute:
+
+```powershell
+php artisan migrate:status
+php artisan migrate
+php artisan db:seed --class=VehicleDemoSeeder
+```
+
+O seeder é independente do `DatabaseSeeder` e dos seeders SFT-QA. Ele cria oito atendimentos, quatro veículos, um sistema exclusivo, uma categoria, duas subcategorias, um contato e um cliente fictícios. Cria até três marcas e reutiliza as já existentes por nome normalizado, inclusive as do [catálogo permanente](vehicle-identification.md#catálogo-permanente-de-marcas). O conjunto inclui três associações de disponibilidade e nove vínculos de subcategoria. Um registro em `vehicle_demo_batches` identifica os dados que a própria execução criou.
+
+| Placa   | Marca      | Linha  | Modelo                                        | Atendimentos |
+| ------- | ---------- | ------ | --------------------------------------------- | -----------: |
+| TST1A01 | Volkswagen | Leve   | SPACEFOX 1.6/ 1.6 Trend Total Flex 8V 5p 2007 |            2 |
+| TST1A02 | Volkswagen | Leve   | SPACEFOX 1.6/ 1.6 Trend Total Flex 8V 5p 2007 |            1 |
+| TST2B01 | Volvo      | Pesada | FH 540 6x4 2022                               |            2 |
+| TST2B02 | Scania     | Pesada | Modelo não informado                          |            1 |
+| —       | —          | —      | Sem vínculo                                   |            2 |
+
+As aberturas vão de oito dias antes da primeira execução até a véspera, às 10h no horário de Brasília. Quatro atendimentos ficam abertos e quatro são encerrados duas horas após a abertura. O comando imprime o ID do sistema e o intervalo efetivo. Por exemplo, uma primeira execução em 24/11/2026 usa **16/11/2026 a 23/11/2026**. Reexecutar preserva as datas. Se uma placa pertencer a um registro não gerenciado, a execução informa a placa e reverte toda a criação. Um conjunto incompleto ou alterado é preservado para revisão.
+
+### Consulta e exportação
+
+Em **Dashboard → Métricas**, selecione **SFT-VEIC | Métricas veiculares fictícias**, deixe status, presença de veículo e classificações em **Todos**, e use **Todo o histórico** ou o período personalizado informado pelo comando. Expanda **Estatísticas veiculares**. Para conferir os documentos com o mesmo recorte, marque **Incluir estatísticas veiculares** ao exportar PDF ou Excel.
+
+| Indicador no recorte                                 |  Esperado |
+| ---------------------------------------------------- | --------: |
+| Atendimentos totais                                  |         8 |
+| Com veículo / sem veículo                            |     6 / 2 |
+| Atendimentos com identificação                       |       75% |
+| Veículos distintos / modelos distintos identificados |     4 / 2 |
+| Veículos sem modelo informado                        |         1 |
+| Linha leve / linha pesada                            |     3 / 3 |
+| Participação leve / pesada                           | 50% / 50% |
+| Volkswagen / Volvo / Scania                          | 3 / 2 / 1 |
+| Modelo SPACEFOX / modelo FH 540                      |     3 / 2 |
+| A · Erro de identificação                            |         5 |
+| B · Informações técnicas incorretas                  |         4 |
+| Vínculos de subcategoria                             |         9 |
+| Veículos recorrentes / atendimentos desses veículos  |     2 / 4 |
+
+O total de vínculos da tabela inclui todos os atendimentos selecionados, inclusive o atendimento sem veículo com a subcategoria A. Nos cruzamentos exclusivamente veiculares, A e B têm quatro ocorrências cada.
+
+### Limpeza da base veicular
+
+Confira o mesmo banco de validação e execute explicitamente:
+
+```powershell
+php artisan demo:vehicles:clean
+```
+
+A limpeza usa os IDs registrados na criação, preserva marcas reutilizadas e verifica dependências antes de remover cada registro. O `VehicleBrandSeeder` retira desse controle as marcas que o catálogo permanente adota, preservando seus IDs e vínculos. Atendimentos com pendências, lembretes, retornos ou vínculos de subcategoria acrescentados depois da geração são preservados. Veículos, marcas e cadastros auxiliares usados por registros restantes também são preservados. O comando informa o total de registros removidos e as tabelas com registros preservados. Os registros preservados saem do controle do seeder. Uma nova rodada pode reutilizar as marcas, mas informa conflito caso alguma placa ou identificação auxiliar reservada continue ocupada.
