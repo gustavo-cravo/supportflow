@@ -40,19 +40,19 @@ Se houver uma identidade duplicada, removida, incompleta ou em conflito com um c
 
 ## Entidades criadas
 
-| Entidade | Quantidade | Cobertura |
-| --- | ---: | --- |
-| Sistemas | 3 | Indicar e iLube ativos; Legado inativo |
-| Categorias | 3 | Duas ativas e uma inativa; compartilhamento e exclusividade |
-| Subcategorias | 7 | Três de acesso, duas de placa e duas de integração; duas inativas |
-| Contatos | 5 | Nomes fictícios, emails reservados e campos opcionais ausentes |
-| Clientes | 3 | Documento sintético de 14 dígitos, de 11 dígitos e ausente |
-| Atendimentos | 24 | Cinco status, três retornos, seis sem cliente, três sem classificação |
-| Pendências | 8 | Cinco abertas e três concluídas; cinco vinculadas e três independentes |
-| Lembretes | 8 | Vencidos, hoje, futuros e concluídos; quatro vinculados e quatro independentes |
-| Artigos | 5 | Três específicos de sistemas, incluindo legado, e dois gerais |
-| Associações categoria/sistema | 6 | Incluem um vínculo histórico desabilitado |
-| Associações subcategoria/sistema | 14 | Incluem os vínculos históricos correspondentes |
+| Entidade                         | Quantidade | Cobertura                                                                      |
+| -------------------------------- | ---------: | ------------------------------------------------------------------------------ |
+| Sistemas                         |          3 | Indicar e iLube ativos; Legado inativo                                         |
+| Categorias                       |          3 | Duas ativas e uma inativa; compartilhamento e exclusividade                    |
+| Subcategorias                    |          7 | Três de acesso, duas de placa e duas de integração; duas inativas              |
+| Contatos                         |          5 | Nomes fictícios, emails reservados e campos opcionais ausentes                 |
+| Clientes                         |          3 | Documento sintético de 14 dígitos, de 11 dígitos e ausente                     |
+| Atendimentos                     |         24 | Cinco status, três retornos, seis sem cliente, três sem classificação          |
+| Pendências                       |          8 | Cinco abertas e três concluídas; cinco vinculadas e três independentes         |
+| Lembretes                        |          8 | Vencidos, hoje, futuros e concluídos; quatro vinculados e quatro independentes |
+| Artigos                          |          5 | Três específicos de sistemas, incluindo legado, e dois gerais                  |
+| Associações categoria/sistema    |          6 | Incluem um vínculo histórico desabilitado                                      |
+| Associações subcategoria/sistema |         14 | Incluem os vínculos históricos correspondentes                                 |
 
 Os contatos e empresas são curados e inteiramente fictícios. Emails usam `sft-qa.example.test`; telefones usam zeros deliberadamente. CPF/CNPJ são sequências sintéticas sem validade cadastral, adequadas à validação atualmente existente. Não há relacionamento direto fictício entre contato e cliente: essa combinação continua representada pelo atendimento.
 
@@ -80,53 +80,53 @@ As datas são calculadas na primeira execução com `America/Sao_Paulo`. A tabel
 
 Selecione **Todo o histórico** para obter o total completo:
 
-| Indicador | Esperado |
-| --- | ---: |
-| Total | 24 |
-| Encerrados (`closed`) | 10 |
-| Não encerrados | 14 |
-| Sistemas com atendimentos | 3 |
-| Sem classificação | 3 |
-| Abertos (`open`) | 4 |
-| Em andamento (`in_progress`) | 3 |
-| Aguardando retorno (`waiting`) | 4 |
-| Resolvidos (`resolved`) | 3 |
+| Indicador                      | Esperado |
+| ------------------------------ | -------: |
+| Total                          |       24 |
+| Encerrados (`closed`)          |       10 |
+| Não encerrados                 |       14 |
+| Sistemas com atendimentos      |        3 |
+| Sem classificação              |        3 |
+| Abertos (`open`)               |        4 |
+| Em andamento (`in_progress`)   |        3 |
+| Aguardando retorno (`waiting`) |        4 |
+| Resolvidos (`resolved`)        |        3 |
 
 Resolvidos continuam no grupo **Não encerrados**, conforme a regra existente. Na Visão geral, os cinco cartões operacionais ficam **4 / 3 / 4 / 2 / 2**: abertos, em andamento, aguardando retorno, pendências atrasadas e lembretes de hoje.
 
 ### Distribuição por sistema e categoria
 
-| Sistema | Total | Encerrados | Não encerrados | Participação |
-| --- | ---: | ---: | ---: | ---: |
-| Indicar fictício | 13 | 5 | 8 | 54,17% |
-| iLube fictício | 7 | 1 | 6 | 29,17% |
-| Legado fictício | 4 | 4 | 0 | 16,67% |
-| **Total** | **24** | **10** | **14** | **100%** |
+| Sistema          |  Total | Encerrados | Não encerrados | Participação |
+| ---------------- | -----: | ---------: | -------------: | -----------: |
+| Indicar fictício |     13 |          5 |              8 |       54,17% |
+| iLube fictício   |      7 |          1 |              6 |       29,17% |
+| Legado fictício  |      4 |          4 |              0 |       16,67% |
+| **Total**        | **24** |     **10** |         **14** |     **100%** |
 
-| Categoria | Ocorrências | Participação no total |
-| --- | ---: | ---: |
-| Falha de acesso | 12 | 50% |
-| Erro na busca por placa | 5 | 20,83% |
-| Integração de dados | 4 | 16,67% |
-| Sem classificação | 3 | 12,50% |
+| Categoria               | Ocorrências | Participação no total |
+| ----------------------- | ----------: | --------------------: |
+| Falha de acesso         |          12 |                   50% |
+| Erro na busca por placa |           5 |                20,83% |
+| Integração de dados     |           4 |                16,67% |
+| Sem classificação       |           3 |                12,50% |
 
 Arredondamentos podem fazer os percentuais exibidos somarem 100,01%.
 
 ### Subcategorias
 
-| Categoria | Subcategoria | Ocorrências | Na categoria |
-| --- | --- | ---: | ---: |
-| Acesso | Sessão expirada | 5 | 41,67% |
-| Acesso | Credenciais inválidas | 2 | 16,67% |
-| Acesso | Usuário bloqueado, inativa | 3 | 25% |
-| Acesso | Sem subcategoria | 2 | 16,67% |
-| Placa | Placa não encontrada | 2 | 40% |
-| Placa | Tempo de consulta esgotado | 2 | 40% |
-| Placa | Sem subcategoria | 1 | 20% |
-| Integração | Fila interrompida | 2 | 50% |
-| Integração | Mapeamento divergente, inativa | 1 | 25% |
-| Integração | Sem subcategoria | 1 | 25% |
-| Sem classificação | Sem classificação | 3 | 100% |
+| Categoria         | Subcategoria                   | Ocorrências | Na categoria |
+| ----------------- | ------------------------------ | ----------: | -----------: |
+| Acesso            | Sessão expirada                |           5 |       41,67% |
+| Acesso            | Credenciais inválidas          |           2 |       16,67% |
+| Acesso            | Usuário bloqueado, inativa     |           3 |          25% |
+| Acesso            | Sem subcategoria               |           2 |       16,67% |
+| Placa             | Placa não encontrada           |           2 |          40% |
+| Placa             | Tempo de consulta esgotado     |           2 |          40% |
+| Placa             | Sem subcategoria               |           1 |          20% |
+| Integração        | Fila interrompida              |           2 |          50% |
+| Integração        | Mapeamento divergente, inativa |           1 |          25% |
+| Integração        | Sem subcategoria               |           1 |          25% |
+| Sem classificação | Sem classificação              |           3 |         100% |
 
 São quatro atendimentos classificados sem subcategoria. Os três sem categoria ficam em um grupo distinto. Percentuais do Dashboard e dos relatórios continuam sendo calculados sobre o conjunto filtrado, não sobre um total fixo da referência.
 
@@ -135,49 +135,49 @@ São quatro atendimentos classificados sem subcategoria. Os três sem categoria 
 As métricas usam **`support_tickets.created_at`**, não `updated_at` nem `closed_at`. São preenchidos abertura, atualização e, quando aplicável, encerramento e confirmação. Datas finais nunca antecedem a abertura nem ultrapassam o instante de geração.
 
 | Idade em dias de calendário | Quantidade |
-| --- | ---: |
-| Hoje | 3 |
-| Ontem | 1 |
-| 2 a 7 dias | 3 |
-| 8 a 15 dias | 3 |
-| 16 a 30 dias | 4 |
-| 31 a 60 dias | 3 |
-| 61 a 90 dias | 3 |
-| Mais de 90 dias | 4 |
+| --------------------------- | ---------: |
+| Hoje                        |          3 |
+| Ontem                       |          1 |
+| 2 a 7 dias                  |          3 |
+| 8 a 15 dias                 |          3 |
+| 16 a 30 dias                |          4 |
+| 31 a 60 dias                |          3 |
+| 61 a 90 dias                |          3 |
+| Mais de 90 dias             |          4 |
 
 Os deslocamentos exatos dos códigos `ATE-001` a `ATE-024` são: **0, 0, 0, 1, 2, 4, 7, 9, 12, 15, 18, 22, 27, 30, 35, 45, 58, 65, 75, 88, 105, 130, 200 e 400 dias**. Cada abertura ocorre entre 9h e 15h; para os registros de hoje, o horário é limitado ao instante da execução. Isso mantém a coerência também próximo da meia-noite.
 
 | Mês de abertura | Quantidade |
-| --- | ---: |
-| Outubro/2025 | 1 |
-| Maio/2026 | 1 |
-| Junho/2026 | 0 |
-| Julho/2026 | 1 |
-| Agosto/2026 | 2 |
-| Setembro/2026 | 3 |
-| Outubro/2026 | 4 |
-| Novembro/2026 | 12 |
+| --------------- | ---------: |
+| Outubro/2025    |          1 |
+| Maio/2026       |          1 |
+| Junho/2026      |          0 |
+| Julho/2026      |          1 |
+| Agosto/2026     |          2 |
+| Setembro/2026   |          3 |
+| Outubro/2026    |          4 |
+| Novembro/2026   |         12 |
 
 Junho zerado aparece no gráfico de períodos limitados. O filtro Todo o histórico continua exibindo apenas os meses observados, conforme a API existente.
 
 ### Filtros para conferir manualmente
 
-| Seleção | Total | Encerrados | Não encerrados | Sem classificação |
-| --- | ---: | ---: | ---: | ---: |
-| Todo o histórico | 24 | 10 | 14 | 3 |
-| Este mês | 12 | 3 | 9 | 1 |
-| Últimos 30 dias | 13 | 3 | 10 | 1 |
-| Últimos 3 meses | 19 | 6 | 13 | 2 |
-| **Últimos 6 meses, padrão da aba** | **22** | **8** | **14** | **2** |
-| Este ano | 23 | 9 | 14 | 2 |
-| Histórico + Indicar | 13 | 5 | 8 | 2 |
-| Histórico + Falha de acesso | 12 | 5 | 7 | 0 |
-| Histórico + Sessão expirada | 5 | 2 | 3 | 0 |
-| Histórico + Indicar + acesso + sessão | 2 | 1 | 1 | 0 |
-| Histórico + Sem classificação | 3 | 1 | 2 | 3 |
-| Histórico + Sem subcategoria | 4 | 1 | 3 | 0 |
-| Personalizado 17/11/2026 a 23/11/2026 | 6 | 1 | 5 | 0 |
-| Personalizado 01/10/2026 a 31/10/2026 | 4 | 2 | 2 | 0 |
+| Seleção                               |  Total | Encerrados | Não encerrados | Sem classificação |
+| ------------------------------------- | -----: | ---------: | -------------: | ----------------: |
+| Todo o histórico                      |     24 |         10 |             14 |                 3 |
+| Este mês                              |     12 |          3 |              9 |                 1 |
+| Últimos 30 dias                       |     13 |          3 |             10 |                 1 |
+| Últimos 3 meses                       |     19 |          6 |             13 |                 2 |
+| **Últimos 6 meses, padrão da aba**    | **22** |      **8** |         **14** |             **2** |
+| Este ano                              |     23 |          9 |             14 |                 2 |
+| Histórico + Indicar                   |     13 |          5 |              8 |                 2 |
+| Histórico + Falha de acesso           |     12 |          5 |              7 |                 0 |
+| Histórico + Sessão expirada           |      5 |          2 |              3 |                 0 |
+| Histórico + Indicar + acesso + sessão |      2 |          1 |              1 |                 0 |
+| Histórico + Sem classificação         |      3 |          1 |              2 |                 3 |
+| Histórico + Sem subcategoria          |      4 |          1 |              3 |                 0 |
+| Personalizado 17/11/2026 a 23/11/2026 |      6 |          1 |              5 |                 0 |
+| Personalizado 01/10/2026 a 31/10/2026 |      4 |          2 |              2 |                 0 |
 
 “Últimos 30 dias” inclui hoje e os 29 dias anteriores; portanto, o registro de 30 dias atrás fica de fora. Três/seis meses incluem o mês atual e os anteriores, com limite final em hoje. Na consulta de ocorrências, o histórico completo oferece duas páginas de 15 registros, sem repetição entre páginas.
 
