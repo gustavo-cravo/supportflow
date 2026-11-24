@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use App\Enums\TicketStatus;
+use App\Models\SupportTicket;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 
@@ -69,15 +70,21 @@ final readonly class TicketMetricsFilters
             $query->where('support_tickets.problem_category_id', $this->categoryId);
         }
         if ($this->subcategoryId !== null) {
-            $query->where('support_tickets.problem_subcategory_id', $this->subcategoryId);
+            $query->whereExists($this->subcategoryLinks($query)->where('problem_subcategory_id', $this->subcategoryId));
         }
         if ($this->classification === 'unclassified') {
             $query->whereNull('support_tickets.problem_category_id');
         } elseif ($this->classification === 'without_subcategory') {
-            $query->whereNotNull('support_tickets.problem_category_id')->whereNull('support_tickets.problem_subcategory_id');
+            $query->whereNotNull('support_tickets.problem_category_id')->whereNotExists($this->subcategoryLinks($query));
         }
 
         return $query;
+    }
+
+    private function subcategoryLinks(Builder $query): Builder
+    {
+        return $query->newQuery()->from(SupportTicket::SUBCATEGORY_PIVOT)->selectRaw('1')
+            ->whereColumn('support_ticket_id', 'support_tickets.id');
     }
 
     /** @return array<string, mixed> */

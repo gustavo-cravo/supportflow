@@ -40,6 +40,7 @@ class ListRequest extends ApiRequest
                 'system_id' => ['nullable', 'integer', 'min:1'],
                 'customer_id' => ['nullable', 'integer', 'min:1'],
                 'contact_id' => ['nullable', 'integer', 'min:1'],
+                'problem_subcategory_id' => ['nullable', 'integer', 'min:1'],
                 'status' => ['nullable', Rule::enum(TicketStatus::class)],
                 'created_from' => ['nullable', 'date_format:Y-m-d'],
                 'created_to' => ['nullable', 'date_format:Y-m-d'],

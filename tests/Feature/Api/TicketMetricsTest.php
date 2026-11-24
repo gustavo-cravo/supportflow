@@ -19,6 +19,9 @@ function metricTicket(int $system, ?int $category, ?int $subcategory, string $st
         'status' => $status, 'created_at' => CarbonImmutable::parse($date, 'America/Sao_Paulo')->setTimezone('America/Sao_Paulo'),
         'updated_at' => '2026-11-23 12:00:00',
     ])->save();
+    if ($subcategory !== null) {
+        $ticket->problemSubcategories()->attach($subcategory, ['problem_category_id' => $category]);
+    }
 
     return $ticket;
 }
@@ -85,7 +88,7 @@ afterEach(function () {
 
 test('metrics summary counts every ticket once including resolved and inactive historical records', function () {
     $this->getJson(metricUrl('summary', ['period' => 'all']))->assertOk()->assertJsonPath('data', [
-        'total' => 13, 'closed' => 5, 'not_closed' => 8, 'systems_count' => 3, 'unclassified' => 3,
+        'total' => 13, 'closed' => 5, 'not_closed' => 8, 'systems_count' => 3, 'unclassified' => 3, 'subcategory_occurrences' => 8,
     ])->assertJsonPath('meta.filters.timezone', 'America/Sao_Paulo');
 });
 
@@ -130,6 +133,30 @@ test('subcategory metrics preserve parent scope, same-name records and unclassif
     expect(collect($rows)->firstWhere('problem_category_id', null)['subcategory_name'])->toBe('Sem classificação');
 });
 
+test('multiple subcategories count as separate occurrences without duplicating tickets', function () {
+    $third = ProblemSubcategory::create(['problem_category_id' => $this->access->id, 'name' => 'Terceiro problema']);
+    $ticket = $this->tickets[0];
+    $ticket->problemSubcategories()->attach([$this->credentials->id, $third->id], ['problem_category_id' => $this->access->id]);
+    $scope = ['period' => 'custom', 'date_from' => '2026-11-01', 'date_to' => '2026-11-01', 'status' => 'open'];
+    $this->getJson(metricUrl('summary', $scope))->assertOk()->assertJsonPath('data.total', 1)
+        ->assertJsonPath('data.subcategory_occurrences', 3);
+    foreach (['systems', 'categories', 'monthly', 'tickets'] as $endpoint) {
+        $this->getJson(metricUrl($endpoint, $scope))->assertOk()->assertJsonPath('meta.total', 1);
+    }
+    $rows = $this->getJson(metricUrl('subcategories', $scope))->assertOk()->assertJsonPath('meta.occurrences', 3)->json('data');
+    expect(array_column($rows, 'problem_subcategory_id'))->toBe([$this->login->id, $this->credentials->id, $third->id]);
+    expect(array_column($rows, 'total'))->toBe([1, 1, 1]);
+    expect(array_column($rows, 'category_total'))->toBe([1, 1, 1]);
+    expect(array_sum(array_column($rows, 'percentage')))->toEqual(300);
+    $filtered = [...$scope, 'problem_subcategory_id' => $third->id];
+    $this->getJson(metricUrl('subcategories', $filtered))->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('meta.occurrences', 1)->assertJsonPath('data.0.problem_subcategory_id', $third->id);
+    $this->getJson(metricUrl('tickets', $filtered))->assertOk()->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.id', $ticket->id)->assertJsonCount(3, 'data.0.problem_subcategories');
+    $this->getJson(metricUrl('tickets', [...$scope, 'classification' => 'without_subcategory']))->assertOk()
+        ->assertJsonPath('meta.total', 0);
+});
+
 test('relative periods use calendar boundaries and end at the end of today in Sao Paulo', function (string $period, string $start, int $total) {
     $this->getJson(metricUrl('summary', ['period' => $period]))->assertOk()
         ->assertJsonPath('data.total', $total)->assertJsonPath('meta.filters.date_from', $start)->assertJsonPath('meta.filters.date_to', '2026-11-23');
@@ -156,7 +183,7 @@ test('bounded monthly series is chronological and includes zero months even with
         ['month' => '2026-07', 'total' => 0], ['month' => '2026-08', 'total' => 1],
     ]);
     $empty = ['period' => 'custom', 'date_from' => '2000-01-01', 'date_to' => '2000-03-31'];
-    $this->getJson(metricUrl('summary', $empty))->assertJsonPath('data', ['total' => 0, 'closed' => 0, 'not_closed' => 0, 'systems_count' => 0, 'unclassified' => 0]);
+    $this->getJson(metricUrl('summary', $empty))->assertJsonPath('data', ['total' => 0, 'closed' => 0, 'not_closed' => 0, 'systems_count' => 0, 'unclassified' => 0, 'subcategory_occurrences' => 0]);
     $this->getJson(metricUrl('monthly', $empty))->assertJsonPath('data', [
         ['month' => '2000-01', 'total' => 0], ['month' => '2000-02', 'total' => 0], ['month' => '2000-03', 'total' => 0],
     ]);
@@ -241,10 +268,12 @@ test('metric queries aggregate in SQL without reading ticket models or associati
     DB::flushQueryLog();
     $this->getJson(metricUrl($endpoint, ['period' => 'all']))->assertOk();
     $queries = DB::getQueryLog();
-    expect($queries)->toHaveCount(1);
-    $sql = strtolower($queries[0]['query']);
-    expect($sql)->toContain('count(')->not->toContain('problem_category_system')->not->toContain('problem_subcategory_system');
-    expect($sql)->not->toContain('select *');
+    expect($queries)->toHaveCount($endpoint === 'subcategories' ? 2 : 1);
+    foreach ($queries as $query) {
+        $sql = strtolower($query['query']);
+        expect($sql)->toContain('count(')->not->toContain('problem_category_system')->not->toContain('problem_subcategory_system');
+        expect($sql)->not->toContain('select *');
+    }
 })->with(['summary', 'systems', 'categories', 'subcategories', 'monthly']);
 
 test('drilldown eager loads relations with a bounded query count for a full page', function () {

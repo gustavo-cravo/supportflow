@@ -41,6 +41,12 @@ const subcategories = computed(
             (row) => row.problem_category_id === selected.value?.problem_category_id,
         ) || [],
 )
+const subcategoryOccurrences = computed(() =>
+    subcategories.value.reduce(
+        (total, row) => total + (row.problem_subcategory_id === null ? 0 : row.total),
+        0,
+    ),
+)
 const indicators = [
     { key: 'total', label: 'Total de atendimentos', icon: 'tickets', color: 'blue' },
     { key: 'not_closed', label: 'Não encerrados', icon: 'clock', color: 'amber' },
@@ -243,9 +249,18 @@ onBeforeUnmount(() => controller?.abort())
                                         ? selected.category_name +
                                           ' · ' +
                                           metricNumber(selected.total) +
-                                          (selected.total === 1 ? ' ocorrência' : ' ocorrências')
+                                          (selected.total === 1
+                                              ? ' atendimento'
+                                              : ' atendimentos') +
+                                          ' · ' +
+                                          metricNumber(subcategoryOccurrences) +
+                                          (subcategoryOccurrences === 1 ? ' vínculo' : ' vínculos')
                                         : 'Selecione uma categoria no ranking acima.'
                                 }}
+                            </p>
+                            <p v-if="subcategoryOccurrences" class="metrics-caption">
+                                Cada vínculo conta uma ocorrência. O percentual usa os atendimentos
+                                da categoria e pode somar mais de 100%.
                             </p>
                         </div>
                     </div>

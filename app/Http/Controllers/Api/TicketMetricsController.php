@@ -40,7 +40,10 @@ class TicketMetricsController extends Controller
         $filters = TicketMetricsFilters::fromValidated($request->validated());
         $rows = $metrics->subcategories($filters);
 
-        return response()->json(['data' => $rows, 'meta' => ['filters' => $filters->toArray(), 'total' => array_sum(array_column($rows, 'total'))]]);
+        return response()->json(['data' => $rows, 'meta' => [
+            'filters' => $filters->toArray(), 'total' => array_sum(array_column($rows, 'total')),
+            'occurrences' => array_sum(array_column(array_filter($rows, fn (array $row) => $row['problem_subcategory_id'] !== null), 'total')),
+        ]]);
     }
 
     public function monthly(TicketMetricsRequest $request, TicketMetrics $metrics): JsonResponse

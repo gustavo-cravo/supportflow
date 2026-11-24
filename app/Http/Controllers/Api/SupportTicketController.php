@@ -19,11 +19,14 @@ class SupportTicketController extends Controller
 {
     public function index(ListRequest $request): AnonymousResourceCollection
     {
-        $query = SupportTicket::with(['system', 'contact', 'customer', 'problemCategory.systems', 'problemSubcategory.systems', 'problemSubcategory.category']);
+        $query = SupportTicket::with(['system', 'contact', 'customer', ...SupportTicket::CLASSIFICATION_RELATIONS]);
         foreach (['system_id', 'contact_id', 'customer_id', 'status'] as $field) {
             if ($request->filled($field)) {
                 $query->where($field, $request->input($field));
             }
+        }
+        if ($request->filled('problem_subcategory_id')) {
+            $query->whereRelation('problemSubcategories', 'problem_subcategories.id', $request->integer('problem_subcategory_id'));
         }
         if ($request->filled('created_from')) {
             $query->where('created_at', '>=', $request->string('created_from').' 00:00:00');
@@ -68,7 +71,7 @@ class SupportTicketController extends Controller
 
     public function related(ListRequest $request, SupportTicket $supportTicket): AnonymousResourceCollection
     {
-        $query = SupportTicket::with(['system', 'contact', 'customer', 'problemCategory.systems', 'problemSubcategory.systems', 'problemSubcategory.category'])
+        $query = SupportTicket::with(['system', 'contact', 'customer', ...SupportTicket::CLASSIFICATION_RELATIONS])
             ->where(function ($query) use ($supportTicket) {
                 $query->where('previous_ticket_id', $supportTicket->getKey())
                     ->orWhere('id', $supportTicket->previous_ticket_id);
@@ -81,7 +84,7 @@ class SupportTicketController extends Controller
     {
         return new SupportTicketResource($ticket->refresh()->load([
             'system', 'contact', 'customer', 'previousTicket', 'followUpTickets', 'pendingTasks', 'reminders',
-            'problemCategory.systems', 'problemSubcategory.systems', 'problemSubcategory.category',
+            ...SupportTicket::CLASSIFICATION_RELATIONS,
         ]));
     }
 }

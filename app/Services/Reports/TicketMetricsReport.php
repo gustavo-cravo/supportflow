@@ -19,26 +19,38 @@ class TicketMetricsReport
     public function build(TicketMetricsFilters $filters): TicketMetricsReportData
     {
         return DB::transaction(function () use ($filters): TicketMetricsReportData {
-            $summary = array_intersect_key($this->metrics->summary($filters), array_flip(['total', 'closed', 'not_closed', 'systems_count', 'unclassified']));
+            $summary = $this->metrics->summary($filters);
             $systems = $this->metrics->systems($filters);
             $categories = $this->metrics->categories($filters);
-            $subcategories = $this->metrics->subcategories($filters);
+            $subcategories = $this->metrics->subcategories($filters, array_column($categories, 'total', 'problem_category_id'));
             $monthly = $this->metrics->monthly($filters);
 
             // Refuse an inconsistent document rather than alter records or invent corrections.
-            foreach ([$systems, $categories, $subcategories, $monthly] as $rows) {
+            foreach ([$systems, $categories, $monthly] as $rows) {
                 if (array_sum(array_column($rows, 'total')) !== $summary['total']) {
                     throw new LogicException('Inconsistent statistical report totals.');
                 }
             }
             $groups = [];
             $byCategory = [];
+            $occurrences = 0;
             foreach ($subcategories as $subcategory) {
                 $byCategory[$subcategory['problem_category_id'] ?? 'unclassified'][] = $subcategory;
+                if ($subcategory['problem_subcategory_id'] !== null) {
+                    $occurrences += (int) $subcategory['total'];
+                }
+            }
+            if ($occurrences !== $summary['subcategory_occurrences']) {
+                throw new LogicException('Inconsistent subcategory occurrence totals.');
             }
             foreach ($categories as $category) {
                 $children = [];
                 foreach ($byCategory[$category['problem_category_id'] ?? 'unclassified'] ?? [] as $subcategory) {
+                    if ($subcategory['category_total'] !== $category['total']
+                        || $subcategory['total'] > $category['total']
+                        || array_sum(array_column($subcategory['systems'], 'total')) !== $subcategory['total']) {
+                        throw new LogicException('Inconsistent category report totals.');
+                    }
                     $children[] = [
                         'name' => (string) $subcategory['subcategory_name'],
                         'total' => (int) $subcategory['total'],
@@ -49,8 +61,8 @@ class TicketMetricsReport
                         ], array_values($subcategory['systems'])),
                     ];
                 }
-                if (array_sum(array_column($children, 'total')) !== $category['total']) {
-                    throw new LogicException('Inconsistent category report totals.');
+                if (array_sum(array_column($children, 'total')) < $category['total']) {
+                    throw new LogicException('Incomplete category report totals.');
                 }
                 $groups[] = ['name' => (string) $category['category_name'], 'total' => (int) $category['total'],
                     'percentage' => (float) $category['percentage'], 'subcategories' => $children];

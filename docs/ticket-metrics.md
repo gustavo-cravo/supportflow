@@ -1,5 +1,7 @@
 # Backend de métricas dos atendimentos etapa 3
 
+A contagem atual de vínculos e os denominadores estão em [Múltiplas subcategorias por atendimento](ticket-multiple-subcategories.md). As regras de contagem desta etapa descrevem a seleção singular.
+
 A API estatística calcula indicadores, distribuições por sistema e classificação, evolução mensal e os atendimentos que compõem cada resultado. Todas as consultas usam os dados atuais de `support_tickets` e são somente de leitura. O Dashboard operacional e o frontend permanecem com seus comportamentos anteriores.
 
 ## Endpoints

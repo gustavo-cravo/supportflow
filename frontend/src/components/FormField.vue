@@ -5,6 +5,7 @@ import RelationSelect from './RelationSelect.vue'
 const props = defineProps({
     field: Object,
     modelValue: [String, Number, Boolean],
+    initialRecord: Object,
     errors: Object,
     prefix: { type: String, default: 'field' },
 })
@@ -31,6 +32,7 @@ function updateInput(event) {
             v-if="field.type === 'relation'"
             :id="id"
             :model-value="modelValue"
+            :initial-record="initialRecord"
             :endpoint="field.endpoint"
             :label-field="field.labelField"
             :params="field.params"
@@ -72,6 +74,8 @@ function updateInput(event) {
                 :id="id"
                 type="checkbox"
                 :checked="modelValue"
+                :aria-invalid="!!error"
+                :aria-describedby="error ? id + '-error' : undefined"
                 @change="$emit('update:modelValue', $event.target.checked)"
             /><span>{{
                 modelValue

@@ -64,6 +64,16 @@ defineEmits(['view', 'edit'])
                             row[column.key]?.name || '—'
                         }}</span>
                         <span
+                            v-else-if="column.type === 'entities'"
+                            class="line-clamp entity-summary"
+                            :title="row[column.key].map((entity) => entity.name).join(', ')"
+                        >
+                            {{ row[column.key][0]?.name || '—' }}
+                            <small v-if="row[column.key].length > 1">
+                                +{{ row[column.key].length - 1 }}
+                            </small>
+                        </span>
+                        <span
                             v-else
                             class="line-clamp muted"
                             :title="String(row[column.key] || '')"

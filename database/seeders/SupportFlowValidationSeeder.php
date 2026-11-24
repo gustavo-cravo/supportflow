@@ -170,6 +170,11 @@ class SupportFlowValidationSeeder extends Seeder
                 'verification_notes' => $finished ? 'Resultado confirmado em ambiente de validação, sem dados reais.' : null,
                 'closed_at' => $status === TicketStatus::Closed ? $activity : null,
             ]);
+            if ($subcategory) {
+                $tickets[$code]->problemSubcategories()->attach($subcategories[$subcategory]->id, [
+                    'problem_category_id' => $tickets[$code]->problem_category_id,
+                ]);
+            }
         }
         $this->activities($tickets);
         $articles = [$curated[4]['issues'][0], $curated[1]['issues'][0], $curated[6]['issues'][0], ...array_slice(SupportFlowDemoCatalog::generalArticles(), 0, 2)];

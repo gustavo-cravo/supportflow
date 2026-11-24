@@ -84,10 +84,14 @@ beforeEach(function () {
         [0, null, null, 'closed', '2026-06-01 00:00:00'],
     ];
     foreach ($rows as $row) {
-        SupportTicket::make(['system_id' => $this->systems[$row[0]]->id, 'contact_id' => $contact->id, 'customer_id' => $customer->id,
+        $ticket = SupportTicket::make(['system_id' => $this->systems[$row[0]]->id, 'contact_id' => $contact->id, 'customer_id' => $customer->id,
             'problem_category_id' => $row[1], 'problem_subcategory_id' => $row[2], 'status' => $row[3],
             'title' => 'TITULO_INDIVIDUAL_7C52', 'description' => 'DESCRICAO_INDIVIDUAL_7C52', 'resolution' => 'RESOLUCAO_PRIVADA_7C52',
-        ])->forceFill(['created_at' => $row[4], 'updated_at' => $row[4]])->save();
+        ])->forceFill(['created_at' => $row[4], 'updated_at' => $row[4]]);
+        $ticket->save();
+        if ($row[2] !== null) {
+            $ticket->problemSubcategories()->attach($row[2], ['problem_category_id' => $row[1]]);
+        }
     }
     $this->systems[1]->update(['is_active' => false]);
     $this->category->update(['is_active' => false]);
@@ -99,6 +103,7 @@ afterEach(function () {
     $this->travelBack();
     DB::disableQueryLog();
     DB::flushQueryLog();
+    gc_collect_cycles();
 });
 
 test('exports a complete valid PDF with metadata, embedded fonts, page numbers and aggregated data', function () {
@@ -113,6 +118,37 @@ test('exports a complete valid PDF with metadata, embedded fonts, page numbers a
     preg_match_all('/\/Type\s*\/Page\b/', $pdf, $pages);
     expect(count($pages[0]))->toBeGreaterThanOrEqual(1);
     expect($response->headers->get('Cache-Control'))->toContain('no-store', 'private');
+});
+
+test('exports distinct ticket totals and every selected subcategory in PDF and Excel', function () {
+    $ticket = SupportTicket::where('created_at', '2026-11-01 00:00:00')->sole();
+    $ticket->problemSubcategories()->attach($this->credentials->id, ['problem_category_id' => $this->category->id]);
+    $scope = ['period' => 'custom', 'date_from' => '2026-11-01', 'date_to' => '2026-11-01', 'status' => 'open'];
+    $report = app(TicketMetricsReport::class)->build(TicketMetricsFilters::fromValidated($scope));
+    expect($report->summary['total'])->toBe(1);
+    expect($report->summary['subcategory_occurrences'])->toBe(2);
+    expect(array_column($report->categories[0]['subcategories'], 'percentage'))->toBe([100.0, 100.0]);
+    $pdf = $this->getJson(exportUrl('pdf', $scope))->assertOk()->getContent();
+    $streams = decodedPdfStreams($pdf);
+    foreach ([$this->login->name, $this->credentials->name] as $name) {
+        expect($streams)->toContain(mb_convert_encoding($name, 'UTF-16BE', 'UTF-8'));
+    }
+    expect($streams)->not->toContain(mb_convert_encoding('TITULO_INDIVIDUAL_7C52', 'UTF-16BE', 'UTF-8'));
+
+    $book = exportedWorkbook($this->getJson(exportUrl('xlsx', $scope))->assertOk()->getContent());
+    expect($book->getSheetByName('Resumo Geral')->getCell('D13')->getValue())->toBe(1);
+    expect($book->getSheetByName('Resumo Geral')->getCell('D18')->getValue())->toBe(2);
+    expect($book->getSheetByName('Subcategorias')->rangeToArray('B5:E6'))->toBe([
+        [$this->login->name, $this->systems[0]->name, '1', '100.00%'],
+        [$this->credentials->name, $this->systems[0]->name, '1', '100.00%'],
+    ]);
+    $book->disconnectWorksheets();
+
+    $filtered = [...$scope, 'problem_subcategory_id' => $this->credentials->id];
+    $report = app(TicketMetricsReport::class)->build(TicketMetricsFilters::fromValidated($filtered));
+    expect($report->summary['total'])->toBe(1);
+    expect($report->summary['subcategory_occurrences'])->toBe(1);
+    expect(array_column($report->categories[0]['subcategories'], 'name'))->toBe([$this->credentials->name]);
 });
 
 test('fits a small two-ticket report with two months and subcategories on one A4 portrait page', function () {
@@ -356,7 +392,7 @@ test('preserves all rows and months when one category continues across multiple 
         $monthly[] = ['month' => CarbonImmutable::parse('2024-01-01')->addMonths($index)->format('Y-m'), 'total' => $index === 35 ? 110 : 0];
     }
     $data = new TicketMetricsReportData($report->generatedAt, $report->criteria,
-        ['total' => 110, 'closed' => 0, 'not_closed' => 110, 'systems_count' => 1, 'unclassified' => 0],
+        ['total' => 110, 'closed' => 0, 'not_closed' => 110, 'systems_count' => 1, 'unclassified' => 0, 'subcategory_occurrences' => 110],
         [['name' => 'Sistema de teste', 'total' => 110, 'closed' => 0, 'not_closed' => 110, 'percentage' => 100.0]],
         [['name' => 'Categoria extensa', 'total' => 110, 'percentage' => 100.0, 'subcategories' => $children]], $monthly);
     $pdf = app(PdfTicketMetricsReport::class)->render($data);

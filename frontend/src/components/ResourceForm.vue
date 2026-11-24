@@ -4,7 +4,12 @@ import { api } from '@/services/api'
 import { initialValues, formPayload, validateFields } from '@/utils/forms'
 import AppModal from './AppModal.vue'
 import FormField from './FormField.vue'
-const props = defineProps({ config: Object, record: Object, defaults: Object })
+const props = defineProps({
+    config: Object,
+    record: Object,
+    defaults: Object,
+    requireActiveSystem: Boolean,
+})
 const emit = defineEmits(['close', 'saved'])
 const fields = computed(() =>
     props.config.fields
@@ -25,6 +30,9 @@ const title = computed(() =>
 async function save() {
     if (busy.value) return
     errors.value = validateFields(fields.value, values)
+    if (props.requireActiveSystem && !values.is_active) {
+        errors.value.is_active = ['Mantenha o sistema ativo para vinculá-lo ao atendimento.']
+    }
     error.value = ''
     if (Object.keys(errors.value).length) {
         error.value = 'Revise os campos destacados.'

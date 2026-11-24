@@ -1,157 +1,210 @@
 <script setup>
 import { computed, reactive, watch } from 'vue'
 import { ticketClassificationFields } from '@/config/resources'
+import { ticketSubcategories } from '@/utils/format'
 import RelationSelect from './RelationSelect.vue'
 
 const props = defineProps({
     systemId: [String, Number],
     categoryId: [String, Number],
-    subcategoryId: [String, Number],
+    subcategoryIds: { type: Array, required: true },
     record: Object,
     errors: Object,
 })
-const emit = defineEmits(['update:categoryId', 'update:subcategoryId'])
-const categories = reactive(new Map()),
-    subcategories = reactive(new Map())
+const emit = defineEmits(['update:categoryId', 'update:subcategoryIds'])
+const [categoryField, subcategoryField] = ticketClassificationFields
+const categoryInput = 'ticket-' + categoryField.name
+const subcategoryInput = 'ticket-' + subcategoryField.name
+const categories = reactive(new Map())
+const subcategories = reactive(new Map())
 const id = (value) => (value ? Number(value) : null)
 watch(
     () => props.record,
     (record) => {
-        if (record?.problem_category)
-            categories.set(id(record.problem_category.id), record.problem_category)
-        if (record?.problem_subcategory)
-            subcategories.set(id(record.problem_subcategory.id), record.problem_subcategory)
+        remember(categories, record?.problem_category)
+        for (const subcategory of ticketSubcategories(record)) remember(subcategories, subcategory)
     },
     { immediate: true },
 )
 const category = computed(() => categories.get(id(props.categoryId)))
-const subcategory = computed(() => subcategories.get(id(props.subcategoryId)))
+const historicalIds = computed(
+    () =>
+        new Set(
+            (
+                props.record?.problem_subcategory_ids ??
+                ticketSubcategories(props.record).map((subcategory) => subcategory.id)
+            ).map(id),
+        ),
+)
 const retainingCategory = computed(
     () =>
         !!props.record?.id &&
         id(props.systemId) === id(props.record.system_id) &&
         id(props.categoryId) === id(props.record.problem_category_id),
 )
-const retainingSubcategory = computed(
-    () =>
-        retainingCategory.value &&
-        id(props.subcategoryId) === id(props.record.problem_subcategory_id),
-)
+const retainingSubcategory = (value) =>
+    retainingCategory.value && historicalIds.value.has(id(value))
 const available = (record) =>
     !!record?.is_active &&
     record.systems?.some((system) => id(system.id) === id(props.systemId) && system.is_active)
+const selected = computed(() =>
+    props.subcategoryIds.map((value) => {
+        const record = subcategories.get(id(value))
+        return {
+            id: value,
+            name: record?.name ?? 'Registro #' + value,
+            inactive: record?.is_active === false,
+            compatible:
+                available(record) && id(record?.problem_category_id) === id(props.categoryId),
+        }
+    }),
+)
+
 function validate() {
     const errors = {}
     if (!props.categoryId) {
-        if (props.subcategoryId)
-            errors.problem_subcategory_id = [
-                'Selecione uma categoria ou remova a subcategoria explicitamente.',
+        if (props.subcategoryIds.length)
+            errors.problem_subcategory_ids = [
+                'Selecione uma categoria para vincular subcategorias.',
             ]
         return errors
     }
-    const assigningSubcategory = !!props.subcategoryId && !retainingSubcategory.value
+    const assigningSubcategory = selected.value.some((row) => !retainingSubcategory(row.id))
     if ((!retainingCategory.value || assigningSubcategory) && !available(category.value)) {
         errors.problem_category_id = [
             'A categoria está inativa ou indisponível para este sistema. Selecione outra ou remova a classificação.',
         ]
     }
-    if (
-        props.subcategoryId &&
-        !retainingSubcategory.value &&
-        (!available(subcategory.value) ||
-            id(subcategory.value?.problem_category_id) !== id(props.categoryId))
-    ) {
-        errors.problem_subcategory_id = [
-            'Selecione uma subcategoria ativa e compatível com a categoria e o sistema ou remova-a explicitamente.',
-        ]
+    const incompatible = selected.value.filter(
+        (row) => !retainingSubcategory(row.id) && !row.compatible,
+    )
+    if (incompatible.length) {
+        errors.problem_subcategory_ids = incompatible.map(
+            (row) => row.name + ' está inativa ou indisponível para esta categoria e sistema.',
+        )
     }
     return errors
 }
+
 const compatibilityErrors = computed(validate)
+const categoryError = computed(
+    () =>
+        compatibilityErrors.value.problem_category_id?.[0] ||
+        props.errors?.problem_category_id?.[0],
+)
+const subcategoryErrors = computed(
+    () =>
+        compatibilityErrors.value.problem_subcategory_ids ||
+        Object.entries(props.errors || {})
+            .filter(
+                ([key]) =>
+                    key === 'problem_subcategory_id' || key.startsWith('problem_subcategory_ids'),
+            )
+            .flatMap(([, messages]) => messages),
+)
 const historical = computed(
     () =>
         !!props.categoryId &&
         retainingCategory.value &&
         (!available(category.value) ||
-            (props.subcategoryId && retainingSubcategory.value && !available(subcategory.value))),
+            selected.value.some((row) => retainingSubcategory(row.id) && !row.compatible)),
 )
-const fields = computed(() =>
-    ticketClassificationFields.map((field, index) => ({
-        ...field,
-        value: index ? props.subcategoryId : props.categoryId,
-        record: index ? subcategory.value : category.value,
-        disabled: !props.systemId || (index === 1 && !props.categoryId),
-        params: {
-            selectable: 1,
-            system_id: props.systemId,
-            ...(index ? { problem_category_id: props.categoryId } : {}),
-        },
-        error: compatibilityErrors.value[field.name]?.[0] || props.errors?.[field.name]?.[0],
-        emptyMessage: index
-            ? 'Nenhuma subcategoria disponível para esta categoria e sistema.'
-            : 'Nenhuma categoria disponível para este sistema.',
-    })),
-)
-function selectRecord(field, record) {
-    if (record)
-        (field.name === 'problem_category_id' ? categories : subcategories).set(
-            id(record.id),
-            record,
-        )
+const scope = computed(() => ({ selectable: 1, system_id: props.systemId }))
+const subcategoryScope = computed(() => ({
+    ...scope.value,
+    problem_category_id: props.categoryId,
+}))
+
+function remember(collection, record) {
+    if (record) collection.set(id(record.id), record)
 }
-function update(field, value) {
-    emit(field.name === 'problem_category_id' ? 'update:categoryId' : 'update:subcategoryId', value)
+function updateCategory(value) {
+    if (id(value) !== id(props.categoryId)) emit('update:subcategoryIds', [])
+    emit('update:categoryId', value)
 }
-function clearClassification() {
-    emit('update:categoryId', null)
-    emit('update:subcategoryId', null)
+function removeSubcategory(value) {
+    emit(
+        'update:subcategoryIds',
+        props.subcategoryIds.filter((selectedId) => id(selectedId) !== id(value)),
+    )
 }
 defineExpose({ validate })
 </script>
+
 <template>
-    <div v-for="field in fields" :key="field.name" class="form-field">
-        <label :for="'ticket-' + field.name"
-            >{{ field.label }} <span class="optional-label">opcional</span></label
+    <div class="form-field">
+        <label :for="categoryInput"
+            >{{ categoryField.label }} <span class="optional-label">opcional</span></label
         >
         <RelationSelect
-            :id="'ticket-' + field.name"
-            :model-value="field.value"
-            :initial-record="field.record"
-            :endpoint="field.endpoint"
-            :params="field.params"
-            :disabled="field.disabled"
-            :invalid="!!field.error"
-            :empty-message="field.emptyMessage"
-            :clear-label="
-                field.name === 'problem_category_id' ? 'Remover categoria' : 'Remover subcategoria'
-            "
-            @select="selectRecord(field, $event)"
-            @update:model-value="update(field, $event)"
+            :id="categoryInput"
+            :model-value="categoryId"
+            :initial-record="category"
+            :endpoint="categoryField.endpoint"
+            :params="scope"
+            :disabled="!systemId"
+            :invalid="!!categoryError"
+            empty-message="Nenhuma categoria disponível para este sistema."
+            clear-label="Remover categoria"
+            @select="remember(categories, $event)"
+            @update:model-value="updateCategory"
         />
-        <p
-            v-if="field.error"
-            :id="'ticket-' + field.name + '-error'"
+        <p v-if="categoryError" :id="categoryInput + '-error'" class="field-error" role="alert">
+            {{ categoryError }}
+        </p>
+        <small v-if="!systemId" class="field-hint"
+            >Selecione um sistema para classificar o problema.</small
+        >
+    </div>
+    <div class="form-field">
+        <label :for="subcategoryInput"
+            >{{ subcategoryField.label }} <span class="optional-label">opcional</span></label
+        >
+        <RelationSelect
+            :id="subcategoryInput"
+            :model-value="subcategoryIds"
+            :endpoint="subcategoryField.endpoint"
+            :params="subcategoryScope"
+            :disabled="!systemId || !categoryId"
+            :invalid="!!subcategoryErrors.length"
+            multiple
+            placeholder="Adicionar subcategoria…"
+            empty-message="Nenhuma outra subcategoria disponível para esta categoria e sistema."
+            @select="remember(subcategories, $event)"
+            @update:model-value="$emit('update:subcategoryIds', $event)"
+        />
+        <ul v-if="selected.length" class="subcategory-tags" aria-label="Subcategorias selecionadas">
+            <li v-for="row in selected" :key="row.id" class="subcategory-tag">
+                <span>{{ row.name }}<small v-if="row.inactive"> · Inativa</small></span>
+                <button
+                    type="button"
+                    class="icon-button"
+                    :aria-label="'Remover subcategoria ' + row.name"
+                    @click="removeSubcategory(row.id)"
+                >
+                    <span aria-hidden="true">×</span>
+                </button>
+            </li>
+        </ul>
+        <button
+            v-if="selected.length"
+            type="button"
+            class="text-button"
+            @click="$emit('update:subcategoryIds', [])"
+        >
+            Limpar subcategorias
+        </button>
+        <div
+            v-if="subcategoryErrors.length"
+            :id="subcategoryInput + '-error'"
             class="field-error"
             role="alert"
         >
-            {{ field.error }}
-        </p>
-        <small v-if="field.disabled" class="field-hint">{{
-            !systemId
-                ? 'Selecione um sistema para classificar o problema.'
-                : 'Selecione uma categoria para escolher a subcategoria.'
-        }}</small>
-        <button
-            v-if="
-                field.name === 'problem_subcategory_id' &&
-                compatibilityErrors.problem_subcategory_id
-            "
-            type="button"
-            class="text-button"
-            @click="$emit('update:subcategoryId', null)"
+            <p v-for="message in new Set(subcategoryErrors)" :key="message">{{ message }}</p>
+        </div>
+        <small v-if="!categoryId || !systemId" class="field-hint"
+            >Selecione um sistema e uma categoria para escolher subcategorias.</small
         >
-            Remover subcategoria
-        </button>
     </div>
     <div
         v-if="compatibilityErrors.problem_category_id"
@@ -159,7 +212,7 @@ defineExpose({ validate })
         role="alert"
     >
         A classificação atual foi mantida para revisão. Escolha opções compatíveis ou
-        <button type="button" class="text-button" @click="clearClassification">
+        <button type="button" class="text-button" @click="updateCategory(null)">
             remova a classificação
         </button>
         antes de salvar.

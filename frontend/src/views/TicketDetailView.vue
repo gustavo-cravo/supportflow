@@ -1,9 +1,9 @@
 <script setup>
-import { onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/services/api'
 import { resources } from '@/config/resources'
-import { displayStatus, formatDate, ticketStatuses } from '@/utils/format'
+import { displayStatus, formatDate, ticketStatuses, ticketSubcategories } from '@/utils/format'
 import { useNotifications } from '@/composables/useNotifications'
 import AppIcon from '@/components/AppIcon.vue'
 import CloseTicketModal from '@/components/CloseTicketModal.vue'
@@ -20,6 +20,7 @@ const ticket = ref(null),
     busy = ref(false),
     closing = ref(false),
     quickView = ref('')
+const subcategories = computed(() => ticketSubcategories(ticket.value))
 const controller = new AbortController()
 async function load() {
     loading.value = true
@@ -259,16 +260,23 @@ onBeforeUnmount(() => controller.abort())
                             </dd>
                         </div>
                         <div>
-                            <dt>Subcategoria do problema</dt>
+                            <dt>Subcategorias do problema</dt>
                             <dd>
-                                {{
-                                    ticket.problem_subcategory?.name ||
-                                    (ticket.problem_category
-                                        ? 'Não informada'
-                                        : 'Não classificado')
-                                }}<small v-if="ticket.problem_subcategory?.is_active === false">
-                                    · Inativa</small
-                                >
+                                <ul v-if="subcategories.length" class="subcategory-list">
+                                    <li v-for="subcategory in subcategories" :key="subcategory.id">
+                                        {{ subcategory.name
+                                        }}<small v-if="subcategory.is_active === false">
+                                            · Inativa</small
+                                        >
+                                    </li>
+                                </ul>
+                                <template v-else>
+                                    {{
+                                        ticket.problem_category
+                                            ? 'Não informada'
+                                            : 'Não classificado'
+                                    }}
+                                </template>
                             </dd>
                         </div>
                         <div>

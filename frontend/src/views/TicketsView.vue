@@ -1,7 +1,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ticketStatuses } from '@/utils/format'
+import { ticketStatuses, ticketSubcategories } from '@/utils/format'
 import { useList } from '@/composables/useList'
 import AppIcon from '@/components/AppIcon.vue'
 import FilterBar from '@/components/FilterBar.vue'
@@ -22,6 +22,12 @@ const fields = [
     { name: 'system_id', label: 'Sistema', type: 'relation', endpoint: 'systems' },
     { name: 'contact_id', label: 'Contato', type: 'relation', endpoint: 'contacts' },
     { name: 'customer_id', label: 'Cliente', type: 'relation', endpoint: 'customers' },
+    {
+        name: 'problem_subcategory_id',
+        label: 'Subcategoria',
+        type: 'relation',
+        endpoint: 'problem-subcategories',
+    },
     { name: 'created_from', label: 'Abertura · de', type: 'date' },
     { name: 'created_to', label: 'Abertura · até', type: 'date' },
 ]
@@ -33,11 +39,15 @@ const params = computed(() =>
     ),
 )
 const { rows, meta, total, loading, error, reload } = useList('support-tickets', params)
+const tableRows = computed(() =>
+    rows.value.map((row) => ({ ...row, problem_subcategories: ticketSubcategories(row) })),
+)
 const columns = [
     { key: 'title', label: 'Atendimento', primary: true },
     { key: 'system', label: 'Sistema', type: 'entity' },
     { key: 'contact', label: 'Contato', type: 'entity' },
     { key: 'customer', label: 'Cliente', type: 'entity' },
+    { key: 'problem_subcategories', label: 'Subcategorias', type: 'entities' },
     { key: 'status', label: 'Status', type: 'badge' },
     { key: 'created_at', label: 'Abertura', type: 'date' },
 ]
@@ -84,7 +94,7 @@ const columns = [
             ></StatePanel
         ><RecordTable
             v-else
-            :rows="rows"
+            :rows="tableRows"
             :columns="columns"
             @view="router.push('/atendimentos/' + $event.id)"
             @edit="router.push('/atendimentos/' + $event.id + '/editar')"

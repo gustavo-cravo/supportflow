@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { ticketFields, ticketClassificationFields } from '@/config/resources'
+import { resources, ticketFields, ticketClassificationFields } from '@/config/resources'
 import { api } from '@/services/api'
 import { initialValues, formPayload, validateFields } from '@/utils/forms'
 import { resolutionValues, resolutionPayload, validateResolution } from '@/utils/resolution'
@@ -9,6 +9,7 @@ import { useNotifications } from '@/composables/useNotifications'
 import AppIcon from '@/components/AppIcon.vue'
 import FormField from '@/components/FormField.vue'
 import PageHeading from '@/components/PageHeading.vue'
+import ResourceForm from '@/components/ResourceForm.vue'
 import ResolutionFields from '@/components/ResolutionFields.vue'
 import StatePanel from '@/components/StatePanel.vue'
 import TicketClassificationFields from '@/components/TicketClassificationFields.vue'
@@ -17,6 +18,11 @@ const route = useRoute(),
     { notify } = useNotifications()
 const editing = Boolean(route.params.id)
 const allFields = [...ticketFields, ...ticketClassificationFields]
+const quickFields = ticketFields.filter((field) =>
+    ['system_id', 'contact_id', 'customer_id'].includes(field.name),
+)
+const quickField = ref(null)
+const quickRecords = reactive({})
 const classification = ref(null)
 const values = reactive({
     ...initialValues(allFields),
@@ -51,6 +57,13 @@ async function load() {
             values,
             initialValues(allFields, record.value),
             resolutionValues(record.value),
+            {
+                problem_subcategory_ids:
+                    record.value.problem_subcategory_ids ??
+                    (record.value.problem_subcategory_id
+                        ? [record.value.problem_subcategory_id]
+                        : []),
+            },
         )
     } catch (exception) {
         if (!controller.signal.aborted) loadError.value = exception.message
@@ -59,7 +72,7 @@ async function load() {
     }
 }
 async function save() {
-    if (busy.value) return
+    if (busy.value || quickField.value) return
     errors.value = {
         ...validateFields(fields.value, values),
         ...validateResolution(values),
@@ -85,6 +98,23 @@ async function save() {
         busy.value = false
     }
 }
+function onQuickSaved(record) {
+    const field = quickField.value.name
+    quickRecords[field] = record
+    values[field] = record.id
+    delete errors.value[field]
+    if (field === 'system_id') {
+        // A newly created system has no classification associations yet.
+        values.problem_category_id = null
+        values.problem_subcategory_ids = []
+        delete errors.value.problem_category_id
+        for (const key of Object.keys(errors.value)) {
+            if (key.startsWith('problem_subcategory_id')) delete errors.value[key]
+        }
+    }
+    quickField.value = null
+    notify('Registro salvo com sucesso.')
+}
 load()
 onBeforeUnmount(() => controller.abort())
 </script>
@@ -99,7 +129,13 @@ onBeforeUnmount(() => controller.abort())
         description="Registre o contexto agora. Tenha tudo à mão quando precisar."
         eyebrow="ATENDIMENTOS"
     /><StatePanel v-if="loading || loadError" :loading="loading" :error="loadError" @retry="load" />
-    <form v-else class="ticket-form" novalidate @submit.prevent="save">
+    <form
+        v-else
+        class="ticket-form"
+        :inert.attr="quickField ? '' : null"
+        novalidate
+        @submit.prevent="save"
+    >
         <div v-if="error" class="alert alert-error" role="alert">{{ error }}</div>
         <section class="panel form-panel">
             <header class="section-heading">
@@ -114,6 +150,7 @@ onBeforeUnmount(() => controller.abort())
                     v-for="field in fields"
                     :key="field.name"
                     v-model="values[field.name]"
+                    :initial-record="quickRecords[field.name]"
                     :field="field"
                     :errors="errors"
                     prefix="ticket"
@@ -121,7 +158,7 @@ onBeforeUnmount(() => controller.abort())
                 <TicketClassificationFields
                     ref="classification"
                     v-model:category-id="values.problem_category_id"
-                    v-model:subcategory-id="values.problem_subcategory_id"
+                    v-model:subcategory-ids="values.problem_subcategory_ids"
                     :system-id="values.system_id"
                     :record="record"
                     :errors="errors"
@@ -132,9 +169,18 @@ onBeforeUnmount(() => controller.abort())
                 sistema ativo.
             </p>
             <p class="form-links">
-                Precisa de um cadastro? <RouterLink to="/sistemas?novo=1">Novo sistema</RouterLink
-                ><span>·</span><RouterLink to="/contatos?novo=1">Novo contato</RouterLink
-                ><span>·</span><RouterLink to="/clientes?novo=1">Novo cliente</RouterLink>
+                Precisa de um cadastro?
+                <template v-for="(field, index) in quickFields" :key="field.name">
+                    <span v-if="index">·</span>
+                    <button
+                        type="button"
+                        aria-haspopup="dialog"
+                        :disabled="busy"
+                        @click="quickField = field"
+                    >
+                        Novo {{ resources[field.endpoint].singular }}
+                    </button>
+                </template>
             </p>
         </section>
         <section class="panel form-panel">
@@ -161,4 +207,11 @@ onBeforeUnmount(() => controller.abort())
             </button>
         </div>
     </form>
+    <ResourceForm
+        v-if="quickField"
+        :config="resources[quickField.endpoint]"
+        :require-active-system="quickField.name === 'system_id'"
+        @close="quickField = null"
+        @saved="onQuickSaved"
+    />
 </template>

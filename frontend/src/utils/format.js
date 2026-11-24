@@ -74,6 +74,13 @@ export function fieldError(errors, name, label) {
 }
 export const emptyToNull = (value) => (value === '' ? null : value)
 
+export function ticketSubcategories(ticket) {
+    return (
+        ticket?.problem_subcategories ??
+        (ticket?.problem_subcategory ? [ticket.problem_subcategory] : [])
+    )
+}
+
 export function formatDocument(value) {
     const digits = String(value ?? '').replace(/\D/g, '')
     return digits.length <= 11

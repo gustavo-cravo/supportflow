@@ -74,14 +74,15 @@ class XlsxTicketMetricsReport
         $summary->mergeCells('A12:C12');
         $this->text($summary, 'D12', 'Quantidade');
         $this->header($summary, 'A12:D12');
-        foreach (['total' => 'Total de atendimentos', 'closed' => 'Encerrados', 'not_closed' => 'Não encerrados', 'systems_count' => 'Sistemas com atendimentos', 'unclassified' => 'Sem classificação'] as $key => $label) {
-            $row = 13 + array_search($key, ['total', 'closed', 'not_closed', 'systems_count', 'unclassified'], true);
+        $row = 13;
+        foreach (['total' => 'Total de atendimentos', 'closed' => 'Encerrados', 'not_closed' => 'Não encerrados', 'systems_count' => 'Sistemas com atendimentos', 'unclassified' => 'Sem classificação', 'subcategory_occurrences' => 'Vínculos com subcategorias'] as $key => $label) {
             $this->text($summary, 'A'.$row, $label);
             $summary->mergeCells('A'.$row.':C'.$row);
             $summary->setCellValueExplicit('D'.$row, $report->summary[$key], DataType::TYPE_NUMERIC);
             $summary->getStyle('D'.$row)->getNumberFormat()->setFormatCode('#,##0');
             $summary->getStyle('D'.$row)->getFont()->setSize(14)->setBold(true)->getColor()->setRGB('245CDA');
             $summary->getRowDimension($row)->setRowHeight(32);
+            $row++;
         }
         $this->text($summary, 'A19', $report->summary['total'] === 0 ? 'Nenhum atendimento encontrado para os filtros selecionados.' : 'Resultados consolidados dos atendimentos, respeitando todos os filtros acima.');
         $summary->mergeCells('A19:D19')->getRowDimension(19)->setRowHeight(30);
@@ -99,7 +100,7 @@ class XlsxTicketMetricsReport
                 }
             }
         }
-        $this->table($book, 'Subcategorias', ['Categoria principal', 'Subcategoria', 'Sistema', 'Ocorrências', 'Participação na categoria'], $rows, [40, 40, 34, 18, 26], [5 => '0.00%'], 'Linhas por sistema. O percentual usa o total filtrado da categoria; somar os sistemas recupera a participação consolidada da subcategoria.');
+        $this->table($book, 'Subcategorias', ['Categoria principal', 'Subcategoria', 'Sistema', 'Ocorrências', 'Participação na categoria'], $rows, [40, 40, 34, 18, 26], [5 => '0.00%'], 'Cada vínculo conta uma ocorrência. O percentual usa os atendimentos da categoria e pode somar mais de 100% entre as subcategorias.');
         $this->table($book, 'Evolução Mensal', ['Mês', 'Atendimentos'], array_map(fn (array $row): array => [$this->monthDate($row['month']), $row['total']], $report->monthly), [38, 28], [1 => 'mm/yyyy']);
         $book->setActiveSheetIndex(0);
 

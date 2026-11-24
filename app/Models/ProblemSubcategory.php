@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable(['problem_category_id', 'name', 'description', 'is_active'])]
 class ProblemSubcategory extends Model
@@ -29,10 +28,11 @@ class ProblemSubcategory extends Model
         return $this->belongsToMany(System::class, 'problem_subcategory_system')->withPivot('problem_category_id', 'is_active')->withTimestamps();
     }
 
-    /** @return HasMany<SupportTicket, $this> */
-    public function supportTickets(): HasMany
+    /** @return BelongsToMany<SupportTicket, $this> */
+    public function supportTickets(): BelongsToMany
     {
-        return $this->hasMany(SupportTicket::class);
+        return $this->belongsToMany(SupportTicket::class, SupportTicket::SUBCATEGORY_PIVOT)
+            ->withPivot('problem_category_id');
     }
 
     /** @return array<string, string> */

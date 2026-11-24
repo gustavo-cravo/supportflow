@@ -3,7 +3,9 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { api } from '@/services/api'
 import AppIcon from './AppIcon.vue'
 const props = defineProps({
-    modelValue: [String, Number],
+    modelValue: [String, Number, Array],
+    multiple: Boolean,
+    placeholder: { type: String, default: 'Selecionar…' },
     endpoint: String,
     labelField: { type: String, default: 'name' },
     params: Object,
@@ -34,7 +36,12 @@ const label = (record) =>
         ? (props.endpoint === 'support-tickets' ? '#' + record.id + ' · ' : '') +
           record[props.labelField]
         : ''
-const visible = computed(() => rows.value.filter((row) => row.id !== props.excludeId))
+const selectedIds = computed(() => new Set(props.multiple ? props.modelValue.map(String) : []))
+const visible = computed(() =>
+    rows.value.filter(
+        (row) => row.id !== props.excludeId && !selectedIds.value.has(String(row.id)),
+    ),
+)
 async function load(page = 1) {
     if (props.disabled) return
     controller?.abort()
@@ -74,9 +81,15 @@ function loadMore() {
     load(meta.value.current_page + 1)
 }
 function select(row) {
-    selected.value = row
-    emit('select', row)
-    emit('update:modelValue', row.id)
+    if (props.multiple) {
+        if (selectedIds.value.has(String(row.id))) return
+        emit('select', row)
+        emit('update:modelValue', [...props.modelValue, row.id])
+    } else {
+        selected.value = row
+        emit('select', row)
+        emit('update:modelValue', row.id)
+    }
     open.value = false
     document.getElementById(props.id)?.focus()
 }
@@ -112,6 +125,7 @@ function onKey(event) {
 watch(
     () => [props.modelValue, props.initialRecord],
     async ([value]) => {
+        if (props.multiple) return
         if (!value) {
             selected.value = null
             return
@@ -185,11 +199,15 @@ onBeforeUnmount(() => {
                 @click="toggle"
             >
                 <span>{{
-                    selected ? label(selected) : modelValue ? 'Carregando seleção…' : 'Selecionar…'
+                    selected
+                        ? label(selected)
+                        : !multiple && modelValue
+                          ? 'Carregando seleção…'
+                          : placeholder
                 }}</span
                 ><AppIcon name="chevron" :size="15" /></button
             ><button
-                v-if="modelValue"
+                v-if="!multiple && modelValue"
                 class="icon-button relation-clear"
                 type="button"
                 :aria-label="clearLabel"
@@ -230,7 +248,7 @@ onBeforeUnmount(() => {
                     :id="id + '-option-' + row.id"
                     :key="row.id"
                     role="option"
-                    :aria-selected="String(modelValue) === String(row.id)"
+                    :aria-selected="!multiple && String(modelValue) === String(row.id)"
                     :class="{ active: active === index }"
                 >
                     <button type="button" @click="select(row)">

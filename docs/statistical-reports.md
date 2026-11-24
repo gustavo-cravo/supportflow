@@ -1,5 +1,7 @@
 # Exportação de relatórios estatísticos — Etapa 5
 
+A contabilização atual das ocorrências e dos atendimentos nos relatórios está em [Múltiplas subcategorias por atendimento](ticket-multiple-subcategories.md).
+
 ## Estado encontrado e conclusão da retomada
 
 Antes da interrupção já estavam escritos o endpoint, a validação, a estrutura compartilhada de dados consolidados, os geradores PDF/XLSX, o template PDF, o modal, o download binário e os testes específicos. As dependências estavam declaradas no Composer e disponíveis no autoload na retomada. Essa implementação foi preservada.

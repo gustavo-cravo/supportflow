@@ -20,7 +20,8 @@ class SaveSupportTicket
                 ? new SupportTicket
                 : SupportTicket::query()->whereKey($ticket->getKey())->lockForUpdate()->firstOrFail();
 
-            (new ValidateTicketClassification)->execute($ticket, $data);
+            $subcategoryIds = (new ValidateTicketClassification)->execute($ticket, $data);
+            unset($data['problem_subcategory_ids'], $data['problem_subcategory_id']);
 
             $systemId = (int) ($data['system_id'] ?? $ticket->system_id);
             if (! $ticket->exists || $systemId !== $ticket->system_id) {
@@ -51,7 +52,13 @@ class SaveSupportTicket
                 $ticket->closed_at = null;
             }
 
+            if ($subcategoryIds !== null) {
+                $data['problem_subcategory_id'] = $subcategoryIds[0] ?? null;
+            }
             $ticket->fill($data);
+            if ($subcategoryIds !== null && $ticket->exists && $ticket->isDirty('problem_category_id')) {
+                $ticket->problemSubcategories()->detach();
+            }
             if (array_key_exists('verification_source', $data) || array_key_exists('verified_at', $data)) {
                 if (($ticket->verification_source === null) !== ($ticket->verified_at === null)) {
                     throw ValidationException::withMessages([
@@ -61,6 +68,11 @@ class SaveSupportTicket
                 }
             }
             $ticket->save();
+            if ($subcategoryIds !== null) {
+                $ticket->problemSubcategories()->syncWithPivotValues($subcategoryIds, [
+                    'problem_category_id' => $ticket->problem_category_id,
+                ]);
+            }
 
             return $ticket;
         }, attempts: 3);
