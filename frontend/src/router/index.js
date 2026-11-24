@@ -37,6 +37,18 @@ export const routes = [
         component: () => import('@/views/TicketDetailView.vue'),
         meta: { title: 'Detalhes do atendimento' },
     },
+    {
+        path: '/veiculos',
+        name: 'vehicles',
+        component: () => import('@/views/VehiclesView.vue'),
+        meta: { title: 'Veículos' },
+    },
+    {
+        path: '/veiculos/:id(\\d+)/historico',
+        name: 'vehicle-history',
+        component: () => import('@/views/VehicleHistoryView.vue'),
+        meta: { title: 'Histórico de atendimentos' },
+    },
     ...[
         ['pendencias', 'pending-tasks', 'Pendências'],
         ['lembretes', 'reminders', 'Lembretes'],

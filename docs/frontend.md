@@ -41,6 +41,7 @@ frontend/
     router/index.js               # rotas SPA e títulos das páginas
     services/api.js               # fetch, JSON, query string e erros HTTP
     config/resources.js           # campos, filtros e colunas dos seis cadastros comuns
+    config/vehicleCatalog.js      # campos, filtros e colunas de veículos e marcas
     composables/
       useList.js                  # paginação, carregamento, cancelamento e respostas obsoletas
       useNotifications.js         # mensagens globais de sucesso/erro
@@ -54,11 +55,15 @@ frontend/
       TicketFormView.vue
       TicketDetailView.vue
       ResourceListView.vue        # pendências, lembretes, artigos, contatos, clientes e sistemas
+      VehiclesView.vue            # abas Veículos e Marcas
+      VehicleHistoryView.vue      # consulta paginada de atendimentos do veículo
       NotFoundView.vue
     components/
       AppIcon.vue, AppModal.vue, PageHeading.vue, ToastList.vue
       FilterBar.vue, PaginationBar.vue, RecordTable.vue, StatePanel.vue, StatusBadge.vue
       FormField.vue, RelationSelect.vue, ResourceForm.vue, RecordDetail.vue
+      VehicleFormModal.vue         # cadastro e edição de veículo com cadastro rápido de marca
+      VehicleIdentity.vue          # placa, marca, modelo e linha em consultas de atendimento
       ResolutionFields.vue, CloseTicketModal.vue, DashboardSection.vue
     __tests__/
       App.spec.js, api.spec.js, flows.spec.js
@@ -81,10 +86,24 @@ Os seis cadastros compartilham comportamentos de listagem e edição, mas mantê
 | `/contatos`                 | Cadastro, consulta, edição e pesquisa por nome, telefone, e-mail e observações                                                                               |
 | `/clientes`                 | Cadastro, consulta, edição e pesquisa; cadastro independente dos contatos                                                                                    |
 | `/sistemas`                 | Cadastro, consulta e edição; filtro por nome e ativo/inativo; ativação/desativação com confirmação e sem exclusão                                            |
+| `/veiculos`                 | Gerenciamento de veículos e marcas, filtros combinados, totais do cadastro e cadastro rápido de marca                                                        |
+| `/veiculos/{id}/historico`  | Identificação do veículo, totais do histórico e lista filtrável de atendimentos                                                                              |
 
-A navegação é feita pelo Vue Router sem recarregar o documento. Filtros e paginação ficam na URL, permitindo atualizar a página, compartilhar o caminho local e usar voltar/avançar do navegador.
+A navegação é feita pelo Vue Router sem recarregar o documento. As listagens gerais guardam filtros e paginação na URL. Em `/veiculos`, cada aba guarda seus próprios filtros e página enquanto a tela está aberta.
 
 O parâmetro de interface `novo=1` abre o formulário do respectivo cadastro. `ver={id}` abre o detalhe de lembretes ou pendências selecionados no painel. Esses parâmetros não são enviados como filtros inventados à API. `anterior={id}` no novo atendimento sugere o vínculo de retorno.
+
+## Veículos e marcas
+
+O item **Veículos** no menu abre `/veiculos` na aba **Veículos**. A aba **Marcas** fica na mesma rota. É possível alternar entre as abas por clique ou pelas setas, Home e End. A lista abre os detalhes pelo título ou pela ação de visualização. O detalhe do veículo mostra a descrição completa, mesmo quando a tabela apresenta apenas um trecho.
+
+`VehiclesView.vue` usa `useList` e `services/api.js` para listar veículos e marcas. O botão **Filtrar** envia `q` e, na aba Veículos, também pode enviar `brand_id` e `vehicle_line`. A API combina esses filtros com a paginação. A busca por placa aceita espaços, hífens e caixa mista. **Limpar** volta à primeira página com os filtros vazios. Os três indicadores usam `meta.counts` da API e mantêm a abrangência do cadastro completo. O total ao lado do título da tabela segue os filtros aplicados.
+
+`VehicleFormModal.vue` aceita a prop opcional `record` para edição e emite `saved` com os dados atualizados devolvidos pela API, ou `close` ao cancelar. O componente reutiliza `ResourceForm`, `FormField`, `RelationSelect` e `AppModal`. As chamadas de gravação são `POST /api/vehicles` ou `PATCH /api/vehicles/{id}`. A página de veículos recarrega a listagem após salvar. O formulário de atendimento usa o registro emitido para preencher a seleção.
+
+A aba **Marcas** e o link **Nova marca** no formulário de veículo usam o mesmo `ResourceForm` e a configuração `vehicleBrands`. O cadastro rápido mantém o rascunho do veículo e suspende o modal de fundo. O cancelamento retorna o foco ao link e mantém a seleção anterior. Ao salvar, a nova marca é selecionada e está disponível nas próximas buscas. A marca é enviada a `POST /api/vehicle-brands` ou `PATCH /api/vehicle-brands/{id}`.
+
+Para validar manualmente em uma base de testes migrada, abra **Veículos** pelo menu. Crie um veículo com uma placa formatada e cadastre a marca pelo link interno. Confirme a seleção automática e os campos preservados. Aplique a busca e os filtros, edite um registro e confira a atualização da listagem com os mesmos filtros. Na aba **Marcas**, pesquise a marca e teste uma variação duplicada de capitalização e espaços. [Contrato da API veicular](vehicle-identification.md)
 
 ## Integração e regras preservadas
 
@@ -96,6 +115,26 @@ O parâmetro de interface `novo=1` abre o formulário do respectivo cadastro. `v
 - Atendimentos anteriores e retornos aparecem como links independentes, com seus próprios status. A interface não propaga encerramentos.
 - A associação de pendências e lembretes pode ser removida; os artigos podem não possuir sistema. Não existe ação de exclusão permanente.
 - Filtros de prazo das pendências usam o estado de atraso calculado pelo backend. Não foi inventado filtro de intervalo de `due_at` que a API atual não oferece.
+
+### Identificação veicular no atendimento
+
+Em `/atendimentos/novo`, o interruptor começa desativado. Em `/atendimentos/{id}/editar`, o `vehicle_id` recebido determina o estado inicial. A seção é independente do sistema e da classificação do problema. Desativá-la oculta o seletor e mantém a seleção no rascunho caso o usuário reative a identificação antes de salvar.
+
+`RelationSelect` consulta `GET /api/vehicles` por `q`, com páginas de 15 resultados, debounce de 250 ms e cancelamento de requisições obsoletas. A pesquisa aceita placa com ou sem formatação, marca e modelo. `VehicleIdentity` mostra placa, marca, descrição completa e linha em cada opção, no veículo selecionado e na consulta do atendimento.
+
+**Novo veículo** abre o `VehicleFormModal` da página Veículos sem sair do formulário. A opção **Nova marca** abre o mesmo cadastro de marca da gestão de veículos. Enquanto um modal estiver aberto, o formulário anterior fica suspenso e retém seus campos. Fechar o modal devolve o foco ao botão que o abriu. O veículo cadastrado fica disponível no catálogo e é selecionado no rascunho, mesmo que o usuário decida cancelar o atendimento depois.
+
+Com a identificação ativa, o formulário exige uma seleção e envia somente `vehicle_id` entre os dados veiculares. Uma criação com a identificação desativada omite o campo. Na edição, a identificação desativada envia `vehicle_id: null` para remover o vínculo. A consulta do atendimento mostra o cadastro atual do veículo vinculado. [Contrato de persistência](vehicle-identification.md#api-de-atendimentos)
+
+Para validar em uma base de teste migrada, abra um novo atendimento e confira o interruptor desativado. Ative-o, pesquise uma placa formatada e selecione um veículo. Depois, abra **Novo veículo**, cadastre uma marca dentro do modal e salve o veículo. Confira a seleção automática e o rascunho do atendimento. Salve o atendimento, consulte seus dados e abra a edição. Desative a identificação, salve e confirme que ela desapareceu da consulta e que o veículo continua no catálogo.
+
+### Histórico e filtros veiculares
+
+Na aba **Veículos**, a ação **Histórico de atendimentos** abre `/veiculos/{id}/historico`. A mesma ação fica nos detalhes de um atendimento vinculado. O histórico usa `FilterBar`, `RecordTable`, `PaginationBar`, `StatusBadge` e `VehicleIdentity`. Os detalhes do atendimento são acessíveis pelo título ou pela ação **Ver detalhes**. O link **Voltar ao histórico veicular** restaura os filtros e a página registrados na URL. Se a página deixou de existir após uma mudança nos vínculos ou nos dados filtrados, a consulta continua na última página disponível com os filtros preservados.
+
+Na listagem geral, **Filtros veiculares** começa recolhido e indica quantos filtros estão aplicados. **Limpar filtros veiculares** preserva os filtros gerais. Escolher **Somente atendimentos sem veículo** desabilita os quatro filtros específicos e os omite da consulta. Atendimentos vinculados apresentam placa e um resumo de marca e modelo sob o título. O detalhe mostra a descrição completa.
+
+Para validar em uma base de teste, vincule a mesma placa a atendimentos em dois sistemas. Abra o histórico, filtre por status e período e compare a contagem filtrada aos totais globais. Abra um atendimento e use **Voltar ao histórico veicular**. Na lista geral, procure a placa com hífen e confirme que limpar os filtros veiculares preserva o status selecionado. Edite o modelo no cadastro e repita a consulta pelo novo texto. [Contrato de consultas](vehicle-identification.md#histórico-por-veículo)
 
 ### CPF/CNPJ de clientes
 
@@ -154,6 +193,8 @@ Os testes frontend usam respostas controladas apenas dentro dos testes, e os tes
 Verificações no navegador: dashboard real via proxy, navegação principal, carregamento de cadastros, validações obrigatórias do atendimento, modal de pendências, layout desktop e viewport móvel de 390 pixels, abertura/fechamento do menu e ausência de erros/avisos no console. Foi corrigida uma prioridade de CSS que inicialmente ocultava o botão do menu móvel. Requisições HTTP ao resumo, diretamente no Laravel e pelo proxy Vite, retornaram 200.
 
 ## Limites e validação manual
+
+Na aba **Métricas**, `MetricsFilters` reutiliza `FilterFields` e a configuração de filtros veiculares da listagem de atendimentos. O estado dos filtros aplicados pertence a `MetricsDashboard` e alimenta as consultas tradicionais, o detalhamento e a exportação. `VehicleMetricsSection` solicita `GET /api/metrics/vehicles` ao expandir, cancela consultas desatualizadas e reutiliza o modal paginado `MetricsTicketsModal` para os agrupamentos. A opção de exportação pertence a `MetricsExportModal` e tem estado independente da seção. Consulte os [filtros e indicadores veiculares](vehicle-identification.md#métricas-veiculares-e-relatórios).
 
 - A etapa 4 validou gravações completas, tabelas populadas, filtros, paginação, encerramento com conflito e layout móvel no navegador usando SQLite descartável. Resultados, correções, comandos para reproduzir e limites restantes estão em [validation.md](validation.md). Nenhum registro do MySQL foi criado ou editado para esses testes.
 - Não foram adicionadas novas regras para transições de status, confirmação obrigatória ou restrições entre sistema/contato dos atendimentos relacionados.

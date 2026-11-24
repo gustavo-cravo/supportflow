@@ -17,6 +17,7 @@ import MetricsSystemsChart from './MetricsSystemsChart.vue'
 import MetricsMonthlyChart from './MetricsMonthlyChart.vue'
 import MetricsTicketsModal from './MetricsTicketsModal.vue'
 import MetricsExportModal from './MetricsExportModal.vue'
+import VehicleMetricsSection from './VehicleMetricsSection.vue'
 import './metrics.css'
 const applied = ref(metricParams(defaultMetricFilters()))
 const result = ref(null),
@@ -125,7 +126,7 @@ onBeforeUnmount(() => controller?.abort())
                 <AppIcon name="download" :size="16" />Exportar relatório
             </button></PageHeading
         >
-        <MetricsFilters @apply="load" @catalog="catalog = $event" />
+        <MetricsFilters :applied="applied" @apply="load" @catalog="catalog = $event" />
         <div :aria-busy="loading">
             <StatePanel v-if="loading || error" :loading="loading" :error="error" @retry="load()" />
             <ul v-if="error && fieldErrors.length" class="metrics-validation" role="alert">
@@ -323,6 +324,7 @@ onBeforeUnmount(() => controller?.abort())
                 </section>
             </template>
         </div>
+        <VehicleMetricsSection :filters="applied" @tickets="drilldown = $event" />
         <MetricsTicketsModal
             v-if="drilldown"
             :filters="drilldown.filters"

@@ -20,6 +20,9 @@ final readonly class TicketMetricsFilters
         public ?int $categoryId,
         public ?int $subcategoryId,
         public string $classification,
+        public VehicleTicketFilters $vehicle,
+        public ?int $vehicleId,
+        public ?string $modelGroup,
     ) {}
 
     /** @param array<string, mixed> $data */
@@ -47,7 +50,10 @@ final readonly class TicketMetricsFilters
             $data['status'] ?? 'all',
             isset($data['problem_category_id']) ? (int) $data['problem_category_id'] : null,
             isset($data['problem_subcategory_id']) ? (int) $data['problem_subcategory_id'] : null,
-            $data['classification'] ?? 'all');
+            $data['classification'] ?? 'all',
+            VehicleTicketFilters::fromValidated($data),
+            isset($data['group_vehicle_id']) ? (int) $data['group_vehicle_id'] : null,
+            $data['group_vehicle_model'] ?? null);
     }
 
     public function apply(Builder $query): Builder
@@ -77,6 +83,21 @@ final readonly class TicketMetricsFilters
         } elseif ($this->classification === 'without_subcategory') {
             $query->whereNotNull('support_tickets.problem_category_id')->whereNotExists($this->subcategoryLinks($query));
         }
+        $this->vehicle->apply($query);
+        if ($this->vehicleId !== null) {
+            $query->where('support_tickets.vehicle_id', $this->vehicleId);
+        }
+        if ($this->modelGroup !== null) {
+            $vehicles = $query->newQuery()->from('vehicles')->selectRaw('1')
+                ->whereColumn('vehicles.id', 'support_tickets.vehicle_id');
+            $key = VehicleModelGroup::expression($vehicles);
+            if ($this->modelGroup === 'missing') {
+                $vehicles->whereRaw($key.' IS NULL');
+            } else {
+                $vehicles->whereRaw($key.' = ?', [$this->modelGroup]);
+            }
+            $query->whereExists($vehicles);
+        }
 
         return $query;
     }
@@ -100,6 +121,8 @@ final readonly class TicketMetricsFilters
             'problem_category_id' => $this->categoryId,
             'problem_subcategory_id' => $this->subcategoryId,
             'classification' => $this->classification,
+            ...$this->vehicle->toArray(),
+            ...array_filter(['group_vehicle_id' => $this->vehicleId, 'group_vehicle_model' => $this->modelGroup]),
         ];
     }
 }

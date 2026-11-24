@@ -13,7 +13,8 @@ Na retomada foram executados os testes novos e de regressão, a análise estáti
 1. Abra **Dashboard → Métricas** e aplique os filtros desejados.
 2. Clique em **Exportar relatório**, próximo ao título da aba.
 3. Confira o resumo do período, sistema, status, categoria e subcategoria.
-4. Selecione **PDF** ou **Excel (.xlsx)** e clique em **Gerar relatório**.
+4. Selecione **PDF** ou **Excel (.xlsx)**. Marque **Incluir estatísticas veiculares** para acrescentar os indicadores, distribuições, rankings agregados, problemas recorrentes e resumo de recorrência.
+5. Clique em **Gerar relatório**.
 
 O download só é iniciado depois de receber um arquivo válido. A mensagem confirma que o download foi iniciado, sem afirmar que o usuário já o salvou. O botão impede envios duplicados enquanto a geração está em andamento. Cancelar, ESC ou clicar fora fecha o modal, cancela a espera no navegador e mantém a análise e seus filtros; isso não interrompe uma requisição que o servidor já estiver processando.
 
@@ -24,6 +25,7 @@ Opções alteradas nos filtros, mas ainda não aplicadas, não entram no relató
 ```http
 GET /api/metrics/export?format=pdf&period=last_6_months
 GET /api/metrics/export?format=xlsx&period=custom&date_from=2026-11-01&date_to=2026-11-30&system_id=1&status=closed&problem_category_id=1&problem_subcategory_id=1
+GET /api/metrics/export?format=pdf&period=all&vehicle_line=heavy&include_vehicle_statistics=1
 ```
 
 Os identificadores do exemplo devem ser substituídos pelos registros existentes no ambiente. Para validar localmente:
@@ -37,6 +39,8 @@ curl.exe --fail --output supportflow_relatorio.xlsx "http://127.0.0.1:8000/api/m
 
 O endpoint utiliza o mesmo grupo de acesso da API atual. Não foi introduzida uma regra de autenticação diferente. Parâmetros inválidos retornam os erros 422 usuais. Falhas de geração retornam HTTP 500 em JSON, sem expor caminhos internos ou entregar um arquivo incompleto como sucesso.
 
+`include_vehicle_statistics` aceita `1` ou `0` na URL e tem padrão `0`. A opção controla as seções adicionais. Os filtros veiculares seguem as validações da aba Métricas e afetam também o conteúdo tradicional. Quando há busca por placa, o documento registra somente que o filtro foi aplicado. Placas cadastradas que apareçam em rótulos descritivos também são omitidas.
+
 Arquivos são retornados diretamente como attachments com os tipos MIME correspondentes, `Cache-Control: private, no-store` e `X-Content-Type-Options: nosniff`. Os nomes usam a data de geração: `supportflow_relatorio_YYYY-MM-DD.pdf` ou `.xlsx`. O frontend verifica o tipo de conteúdo, rejeita arquivos vazios e restringe os nomes de download. Os objetos URL são liberados após iniciar o download.
 
 ## Dados compartilhados, consistência e privacidade
@@ -46,6 +50,8 @@ Arquivos são retornados diretamente como attachments com os tipos MIME correspo
 Os totais gerais, por sistema, categoria, subcategoria e mês são conciliados antes da geração. A soma das subcategorias também é comparada ao total da categoria. Uma divergência provoca erro de geração; não há correções automáticas no banco.
 
 `TicketMetricsReportData` contém somente critérios textuais, data de geração, indicadores, nomes dos agrupamentos, contagens e percentuais. Identificadores usados pelas consultas são retirados na projeção para o documento. PDF e XLSX recebem essa mesma estrutura. Não são exportados números/títulos de chamados, clientes, contatos, telefones, documentos, descrições ou resoluções individuais.
+
+Quando solicitada, a projeção veicular usa a mesma agregação do Dashboard e omite o ranking interno por placa. PDF e Excel recebem as mesmas colunas e contagens. O PDF repete cabeçalhos de tabelas e distribui descrições muito extensas em linhas consecutivas. O Excel conserva a descrição completa em uma célula. Para textos maiores que o limite de altura da linha, use a barra de fórmulas para consultar o conteúdo integral. A [documentação veicular](vehicle-identification.md#métricas-veiculares-e-relatórios) descreve as sete planilhas opcionais, os denominadores e a reclassificação de períodos anteriores.
 
 As contagens e percentuais existentes são reutilizados. Os percentuais adicionais exigidos pelo relatório são calculados uma única vez na estrutura compartilhada:
 
@@ -91,17 +97,17 @@ Arquivos desta revisão:
 
 Os exemplos foram gerados exclusivamente com agregados fictícios ou consultas à base SQLite isolada de testes. Todos foram reabertos com pypdf/pdfplumber, renderizados com Poppler e inspecionados visualmente, incluindo as páginas de continuação. A conferência automática verificou A4 retrato, rótulos completos, valores mensais legíveis no gráfico e na tabela, limites das margens e separação do rodapé.
 
-| Cenário | Páginas |
-| --- | ---: |
-| 2 atendimentos, 2 sistemas, 2 categorias e 2 meses | 1 |
-| Sem resultados, com meses zerados | 1 |
-| 18 sistemas, 45 categorias e 90 subcategorias, com nomes extensos | 13 |
-| Uma categoria com 110 subcategorias e 36 meses | 8 |
-| Dois atendimentos com filtros textuais longos | 1 |
-| Nomes de 255 caracteres sem espaços | 2 |
-| Base isolada: 50 atendimentos, todo o histórico | 2 |
-| Base isolada: 50 atendimentos, últimos 6 meses | 2 |
-| Base isolada: 8 atendimentos, este mês | 1 |
+| Cenário                                                           | Páginas |
+| ----------------------------------------------------------------- | ------: |
+| 2 atendimentos, 2 sistemas, 2 categorias e 2 meses                |       1 |
+| Sem resultados, com meses zerados                                 |       1 |
+| 18 sistemas, 45 categorias e 90 subcategorias, com nomes extensos |      13 |
+| Uma categoria com 110 subcategorias e 36 meses                    |       8 |
+| Dois atendimentos com filtros textuais longos                     |       1 |
+| Nomes de 255 caracteres sem espaços                               |       2 |
+| Base isolada: 50 atendimentos, todo o histórico                   |       2 |
+| Base isolada: 50 atendimentos, últimos 6 meses                    |       2 |
+| Base isolada: 8 atendimentos, este mês                            |       1 |
 
 São **9 cenários e 31 páginas**. O exemplo isolado anterior de 50 atendimentos tinha quatro páginas; com os mesmos totais, a nova apresentação utiliza duas. A quantidade de páginas continua dependendo do conteúdo, sem teto ou truncamento de resultados. Os exemplos, JSONs de referência, imagens e verificações estão em `storage/framework/testing/evidence/pdf-layout/`, fora do versionamento.
 

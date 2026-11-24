@@ -15,13 +15,24 @@ const error = computed(() => fieldError(props.errors, props.field.name, props.fi
 function updateInput(event) {
     if (props.field.mask === 'cpf-cnpj') {
         event.target.value = formatDocument(event.target.value)
+    } else if (props.field.mask === 'plate') {
+        event.target.value = event.target.value
+            .replace(/[\p{White_Space}-]+/gu, '')
+            .replace(/[a-z]/g, (letter) => letter.toUpperCase())
     }
     emit('update:modelValue', event.target.value)
 }
 </script>
 <template>
     <div class="form-field" :class="{ 'field-full': field.full }">
-        <label :for="id"
+        <div v-if="$slots['label-action']" class="field-label-row">
+            <label :for="id"
+                >{{ field.label }}
+                <span v-if="field.required" class="required-mark" aria-hidden="true">*</span></label
+            >
+            <slot name="label-action" />
+        </div>
+        <label v-else :for="id"
             >{{ field.label }}
             <span v-if="field.required" class="required-mark" aria-hidden="true">*</span
             ><span v-else-if="field.type !== 'checkbox'" class="optional-label"
@@ -64,7 +75,9 @@ function updateInput(event) {
             :aria-describedby="error ? id + '-error' : undefined"
             @change="$emit('update:modelValue', $event.target.value)"
         >
-            <option v-if="!field.required" value="">Não informado</option>
+            <option v-if="!field.required || field.emptyLabel" value="" :disabled="field.required">
+                {{ field.emptyLabel || 'Não informado' }}
+            </option>
             <option v-for="option in field.options" :key="option.value" :value="option.value">
                 {{ option.label }}
             </option>
@@ -90,6 +103,8 @@ function updateInput(event) {
             :type="field.type || 'text'"
             :value="field.mask === 'cpf-cnpj' ? formatDocument(modelValue) : modelValue"
             :inputmode="field.inputmode"
+            :autocapitalize="field.mask === 'plate' ? 'characters' : undefined"
+            :spellcheck="field.mask === 'plate' ? false : undefined"
             :required="field.required"
             :maxlength="field.max"
             :step="field.type === 'datetime-local' ? 1 : undefined"
@@ -102,3 +117,15 @@ function updateInput(event) {
         <small v-if="field.type === 'datetime-local'" class="field-hint">Horário de Brasília</small>
     </div>
 </template>
+<style scoped>
+.field-label-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    color: #65738b;
+    font-size: 12px;
+    font-weight: 550;
+}
+</style>

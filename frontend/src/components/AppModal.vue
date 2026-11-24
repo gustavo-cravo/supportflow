@@ -1,13 +1,19 @@
+<script>
+let openModals = 0
+let previousOverflow
+</script>
+
 <script setup>
-import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { nextTick, onBeforeUnmount, onMounted, ref, useId } from 'vue'
 import AppIcon from './AppIcon.vue'
-defineProps({ title: String, busy: Boolean, wide: Boolean })
+const props = defineProps({ title: String, busy: Boolean, wide: Boolean, suspended: Boolean })
 const emit = defineEmits(['close'])
 const panel = ref(null)
+const titleId = useId()
 let previousFocus
-let previousOverflow
 function onKey(event) {
-    if (event.key === 'Escape') emit('close')
+    if (props.suspended) return
+    if (event.key === 'Escape' && !props.busy) emit('close')
     if (event.key !== 'Tab') return
     const elements = [
         ...panel.value.querySelectorAll(
@@ -19,7 +25,11 @@ function onKey(event) {
         panel.value.focus()
         return
     }
-    if (event.shiftKey && document.activeElement === elements[0]) {
+    if (!elements.includes(document.activeElement)) {
+        event.preventDefault()
+        const target = event.shiftKey ? elements.at(-1) : elements[0]
+        target.focus()
+    } else if (event.shiftKey && document.activeElement === elements[0]) {
         event.preventDefault()
         elements.at(-1).focus()
     } else if (!event.shiftKey && document.activeElement === elements.at(-1)) {
@@ -29,31 +39,38 @@ function onKey(event) {
 }
 onMounted(async () => {
     previousFocus = document.activeElement
-    previousOverflow = document.body.style.overflow
+    if (openModals++ === 0) previousOverflow = document.body.style.overflow
     document.body.style.overflow = 'hidden'
     await nextTick()
     panel.value?.focus()
 })
 onBeforeUnmount(() => {
-    document.body.style.overflow = previousOverflow
-    previousFocus?.focus?.()
+    if (--openModals === 0) document.body.style.overflow = previousOverflow
+    nextTick(() => {
+        if (previousFocus?.isConnected) previousFocus.focus()
+    })
 })
 </script>
 <template>
     <Teleport to="body"
-        ><div class="modal-backdrop" @click.self="!busy && $emit('close')">
+        ><div
+            class="modal-backdrop"
+            :inert.attr="suspended ? '' : null"
+            :aria-hidden="suspended || undefined"
+            @click.self="!busy && !suspended && $emit('close')"
+        >
             <section
                 ref="panel"
                 class="modal"
                 :class="{ 'modal-wide': wide }"
                 role="dialog"
-                aria-modal="true"
-                aria-labelledby="modal-title"
+                :aria-modal="!suspended"
+                :aria-labelledby="titleId"
                 tabindex="-1"
                 @keydown="onKey"
             >
                 <header class="modal-header">
-                    <h2 id="modal-title">{{ title }}</h2>
+                    <h2 :id="titleId">{{ title }}</h2>
                     <button
                         type="button"
                         class="icon-button"

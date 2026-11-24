@@ -76,6 +76,15 @@ export function describeMetricFilters(applied, resolved, catalog) {
     const dates = resolved.date_from
         ? `${resolved.date_from.split('-').reverse().join('/')} a ${resolved.date_to.split('-').reverse().join('/')}`
         : ''
+    const vehicle = [
+        applied.vehicle_presence === 'with' && 'Com veículo',
+        applied.vehicle_presence === 'without' && 'Sem veículo',
+        applied.vehicle_plate && 'Filtro de placa aplicado',
+        applied.vehicle_brand_id && 'Filtro de marca aplicado',
+        applied.vehicle_model && 'Filtro de descrição do modelo aplicado',
+        applied.vehicle_line === 'light' && 'Linha leve',
+        applied.vehicle_line === 'heavy' && 'Linha pesada',
+    ].filter(Boolean)
     return [
         { label: 'Período', value: [period, dates].filter(Boolean).join(' · ') },
         {
@@ -119,5 +128,6 @@ export function describeMetricFilters(applied, resolved, catalog) {
                         )
                       : 'Todas as subcategorias aplicáveis',
         },
+        ...(vehicle.length ? [{ label: 'Filtros veiculares', value: vehicle.join(' · ') }] : []),
     ]
 }

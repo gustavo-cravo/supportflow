@@ -12,6 +12,8 @@ use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\SupportTicketController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\TicketMetricsController;
+use App\Http\Controllers\Api\VehicleBrandController;
+use App\Http\Controllers\Api\VehicleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('dashboard/summary', [DashboardController::class, 'summary'])->name('dashboard.summary');
@@ -23,6 +25,7 @@ Route::prefix('metrics')->name('metrics.')->controller(TicketMetricsController::
     Route::get('categories', 'categories')->name('categories');
     Route::get('subcategories', 'subcategories')->name('subcategories');
     Route::get('monthly', 'monthly')->name('monthly');
+    Route::get('vehicles', 'vehicles')->name('vehicles');
     Route::get('tickets', 'tickets')->name('tickets');
 });
 
@@ -33,6 +36,10 @@ Route::apiResource('problem-subcategories', ProblemSubcategoryController::class)
     ->parameters(['problem-subcategories' => 'problemSubcategory'])->except('destroy');
 Route::apiResource('contacts', ContactController::class)->except('destroy');
 Route::apiResource('customers', CustomerController::class)->except('destroy');
+Route::apiResource('vehicle-brands', VehicleBrandController::class)
+    ->parameters(['vehicle-brands' => 'vehicleBrand'])->except('destroy');
+Route::apiResource('vehicles', VehicleController::class)->except('destroy');
+Route::get('vehicles/{vehicle}/support-tickets', [SupportTicketController::class, 'vehicleHistory'])->name('vehicles.tickets');
 Route::apiResource('support-tickets', SupportTicketController::class)
     ->parameters(['support-tickets' => 'supportTicket'])->except('destroy');
 Route::patch('support-tickets/{supportTicket}/status', [SupportTicketController::class, 'status'])->name('support-tickets.status');

@@ -10,10 +10,11 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
+ * @property int|null $vehicle_id
  * @property CarbonInterface|null $verified_at
  * @property CarbonInterface|null $closed_at
  */
-#[Fillable(['system_id', 'contact_id', 'customer_id', 'previous_ticket_id', 'problem_category_id', 'problem_subcategory_id', 'title', 'description', 'status', 'resolution', 'verification_source', 'verification_notes', 'verified_by', 'verified_at', 'closed_at'])]
+#[Fillable(['system_id', 'contact_id', 'customer_id', 'vehicle_id', 'previous_ticket_id', 'problem_category_id', 'problem_subcategory_id', 'title', 'description', 'status', 'resolution', 'verification_source', 'verification_notes', 'verified_by', 'verified_at', 'closed_at'])]
 class SupportTicket extends Model
 {
     public const SUBCATEGORY_PIVOT = 'problem_subcategory_support_ticket';
@@ -39,6 +40,12 @@ class SupportTicket extends Model
     public function customer(): BelongsTo
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    /** @return BelongsTo<Vehicle, $this> */
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 
     /** @return BelongsTo<ProblemCategory, $this> */

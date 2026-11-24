@@ -15,6 +15,7 @@ final readonly class TicketMetricsReportData
      * @param  list<array{name: string, total: int, closed: int, not_closed: int, percentage: float}>  $systems
      * @param  list<array{name: string, total: int, percentage: float, subcategories: list<array{name: string, total: int, percentage: float, systems: list<array{name: string, total: int, percentage: float}>}>}>  $categories
      * @param  list<array{month: string, total: int}>  $monthly
+     * @param  list<array{title: string, sheet: string, headers: list<string>, widths: list<int>, rows: list<list<string|int|float>>, percentages: list<int>, percentageRows: list<int>, note: ?string}>  $vehicleTables
      */
     public function __construct(
         public CarbonImmutable $generatedAt,
@@ -23,5 +24,6 @@ final readonly class TicketMetricsReportData
         public array $systems,
         public array $categories,
         public array $monthly,
+        public array $vehicleTables = [],
     ) {}
 }

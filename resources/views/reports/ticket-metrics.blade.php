@@ -50,6 +50,11 @@
         .monthly-layout img { display: block; width: 100%; height: 70pt; }
         .monthly-layout.single-month img { height: 50pt; }
         .monthly-layout .number { width: 50%; }
+        .vehicle-report td, .vehicle-report th { padding-right: 4pt; padding-left: 4pt; }
+        .vehicle-report .numeric { text-align: right; }
+        .vehicle-report-wide { font-size: 8.25pt; }
+        .vehicle-share { margin-top: 3pt; height: 3pt; background: #edf3fa; }
+        .vehicle-share div { height: 3pt; background: #245cda; }
     </style>
 </head>
 <body>
@@ -130,5 +135,8 @@
     @empty
         <p class="empty">Sem meses com registros para os filtros selecionados.</p>
     @endforelse
+    @if ($report->vehicleTables !== [])
+        @include('reports.partials.vehicle-metrics')
+    @endif
 </body>
 </html>

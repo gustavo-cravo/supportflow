@@ -22,15 +22,20 @@ defineEmits(['view', 'edit'])
             <tbody>
                 <tr v-for="row in rows" :key="row.id" :class="{ 'row-overdue': row.is_overdue }">
                     <td v-for="column in columns" :key="column.key">
-                        <button
-                            v-if="column.primary"
-                            type="button"
-                            class="record-title"
-                            @click="$emit('view', row)"
-                        >
-                            <span class="line-clamp">{{ row[column.key] || 'Sem título' }}</span
-                            ><small>#{{ String(row.id).padStart(4, '0') }}</small>
-                        </button>
+                        <slot
+                            v-if="$slots['cell-' + column.key]"
+                            :name="'cell-' + column.key"
+                            :row="row"
+                        />
+                        <template v-else-if="column.primary">
+                            <button type="button" class="record-title" @click="$emit('view', row)">
+                                <span class="line-clamp">{{
+                                    row[column.key] || 'Sem título'
+                                }}</span>
+                                <small>#{{ String(row.id).padStart(4, '0') }}</small>
+                            </button>
+                            <slot name="primary-context" :row="row" />
+                        </template>
                         <StatusBadge
                             v-else-if="column.type === 'badge'"
                             :value="

@@ -139,7 +139,7 @@ class TicketMetrics
     /** @return LengthAwarePaginator<int, SupportTicket> */
     public function tickets(TicketMetricsFilters $filters, int $perPage): LengthAwarePaginator
     {
-        $query = SupportTicket::with(['system', 'contact', 'customer', ...SupportTicket::CLASSIFICATION_RELATIONS]);
+        $query = SupportTicket::with(['system', 'contact', 'customer', 'vehicle.brand', ...SupportTicket::CLASSIFICATION_RELATIONS]);
         $filters->apply($query->getQuery());
 
         return $query->orderByDesc('support_tickets.created_at')->orderByDesc('support_tickets.id')->paginate($perPage)->withQueryString();

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import { api } from '@/services/api'
 import AppIcon from './AppIcon.vue'
 const props = defineProps({
@@ -17,6 +17,7 @@ const props = defineProps({
     initialRecord: Object,
     emptyMessage: { type: String, default: 'Nenhum registro encontrado.' },
     clearLabel: { type: String, default: 'Limpar seleção' },
+    searchLabel: { type: String, default: 'Pesquisar opções' },
 })
 const emit = defineEmits(['update:modelValue', 'select'])
 const open = ref(false),
@@ -67,18 +68,40 @@ async function load(page = 1) {
 }
 async function toggle() {
     if (props.disabled) return
-    open.value = !open.value
     if (open.value) {
-        search.value = ''
-        await load()
-        searchInput.value?.focus()
+        close()
+        return
     }
+    search.value = ''
+    rows.value = []
+    meta.value = null
+    open.value = true
+    load()
+    await nextTick()
+    searchInput.value?.focus()
+}
+function cancelSearch() {
+    clearTimeout(timer)
+    version++
+    controller?.abort()
+}
+function close() {
+    cancelSearch()
+    open.value = false
+    loading.value = false
+}
+function onFocusOut(event) {
+    if (open.value && !event.currentTarget.contains(event.relatedTarget)) close()
 }
 function loadMore() {
     // The button disappears on the last page. Keep focus inside the popover
     // before disabling/removing it, otherwise focusout closes the new options.
     searchInput.value?.focus()
     load(meta.value.current_page + 1)
+}
+function retry() {
+    searchInput.value?.focus()
+    load()
 }
 function select(row) {
     if (props.multiple) {
@@ -90,23 +113,29 @@ function select(row) {
         emit('select', row)
         emit('update:modelValue', row.id)
     }
-    open.value = false
+    close()
     document.getElementById(props.id)?.focus()
 }
 function clear() {
     selected.value = null
     emit('select', null)
     emit('update:modelValue', null)
-    open.value = false
+    close()
+    document.getElementById(props.id)?.focus()
 }
 function onSearch() {
-    clearTimeout(timer)
+    cancelSearch()
+    rows.value = []
+    meta.value = null
+    active.value = 0
+    error.value = ''
+    loading.value = true
     timer = setTimeout(() => load(), 250)
 }
 function onKey(event) {
     if (event.key === 'ArrowDown') {
         event.preventDefault()
-        active.value = Math.min(active.value + 1, visible.value.length - 1)
+        active.value = Math.min(active.value + 1, Math.max(0, visible.value.length - 1))
     }
     if (event.key === 'ArrowUp') {
         event.preventDefault()
@@ -118,13 +147,13 @@ function onKey(event) {
     }
     if (event.key === 'Escape') {
         event.stopPropagation()
-        open.value = false
+        close()
         document.getElementById(props.id)?.focus()
     }
 }
 watch(
     () => [props.modelValue, props.initialRecord],
-    async ([value]) => {
+    async ([value], _previous, onCleanup) => {
         if (props.multiple) return
         if (!value) {
             selected.value = null
@@ -135,11 +164,14 @@ watch(
             return
         }
         if (String(selected.value?.id) === String(value)) return
+        selected.value = null
+        const detail = new AbortController()
+        onCleanup(() => detail.abort())
         try {
-            const result = await api.get(props.endpoint + '/' + value)
-            if (String(props.modelValue) === String(value)) selected.value = result.data
+            const result = await api.get(props.endpoint + '/' + value, undefined, detail.signal)
+            if (!detail.signal.aborted) selected.value = result.data
         } catch {
-            if (String(props.modelValue) === String(value))
+            if (!detail.signal.aborted)
                 selected.value = { id: value, [props.labelField]: 'Registro #' + value }
         }
     },
@@ -148,9 +180,7 @@ watch(
 watch(
     () => props.params,
     () => {
-        clearTimeout(timer)
-        version++
-        controller?.abort()
+        cancelSearch()
         rows.value = []
         meta.value = null
         loading.value = false
@@ -161,29 +191,13 @@ watch(
 watch(
     () => props.disabled,
     (disabled) => {
-        if (!disabled) return
-        open.value = false
-        version++
-        controller?.abort()
-        loading.value = false
-        clearTimeout(timer)
+        if (disabled) close()
     },
 )
-onBeforeUnmount(() => {
-    clearTimeout(timer)
-    version++
-    controller?.abort()
-})
+onBeforeUnmount(cancelSearch)
 </script>
 <template>
-    <div
-        class="relation-select"
-        @focusout="
-            (event) => {
-                if (!event.currentTarget.contains(event.relatedTarget)) open = false
-            }
-        "
-    >
+    <div class="relation-select" @focusout="onFocusOut">
         <div class="relation-trigger">
             <button
                 :id="id"
@@ -222,7 +236,7 @@ onBeforeUnmount(() => {
                 <AppIcon name="search" :size="16" /><input
                     ref="searchInput"
                     v-model="search"
-                    aria-label="Pesquisar opções"
+                    :aria-label="searchLabel"
                     role="combobox"
                     aria-autocomplete="list"
                     aria-expanded="true"
@@ -231,13 +245,14 @@ onBeforeUnmount(() => {
                         visible[active] ? id + '-option-' + visible[active].id : undefined
                     "
                     placeholder="Digite para pesquisar…"
+                    maxlength="255"
                     @input="onSearch"
                     @keydown="onKey"
                 />
             </div>
             <p v-if="error" class="field-error" role="alert">
                 {{ error }}
-                <button type="button" class="text-button" @click="load()">Tentar novamente</button>
+                <button type="button" class="text-button" @click="retry">Tentar novamente</button>
             </p>
             <p v-else-if="loading && !rows.length" class="lookup-hint" role="status">
                 Buscando opções…
@@ -252,7 +267,9 @@ onBeforeUnmount(() => {
                     :class="{ active: active === index }"
                 >
                     <button type="button" @click="select(row)">
-                        {{ label(row) }}<small v-if="row.is_active === false"> · Inativo</small>
+                        <slot name="option" :record="row">
+                            {{ label(row) }}<small v-if="row.is_active === false"> · Inativo</small>
+                        </slot>
                     </button>
                 </li>
             </ul>

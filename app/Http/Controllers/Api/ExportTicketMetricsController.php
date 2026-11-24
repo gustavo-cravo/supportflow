@@ -17,7 +17,7 @@ class ExportTicketMetricsController extends Controller
     public function __invoke(ExportTicketMetricsRequest $request, TicketMetricsReport $reports, PdfTicketMetricsReport $pdf, XlsxTicketMetricsReport $xlsx): Response|JsonResponse
     {
         try {
-            $report = $reports->build(TicketMetricsFilters::fromValidated($request->validated()));
+            $report = $reports->build(TicketMetricsFilters::fromValidated($request->validated()), $request->boolean('include_vehicle_statistics'));
             $format = $request->input('format');
             $bytes = $format === 'pdf' ? $pdf->render($report) : $xlsx->render($report);
 

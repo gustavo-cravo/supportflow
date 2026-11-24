@@ -10,6 +10,7 @@ use App\Services\Reports\PdfTicketMetricsReport;
 use App\Services\Reports\TicketMetricsReport;
 use App\Services\Reports\XlsxTicketMetricsReport;
 use App\Services\TicketMetrics;
+use App\Services\VehicleMetrics;
 use App\Support\TicketMetricsFilters;
 use App\Support\TicketMetricsReportData;
 use Carbon\CarbonImmutable;
@@ -366,7 +367,7 @@ test('refuses inconsistent aggregate results instead of generating an incorrect 
     foreach (['systems', 'categories', 'subcategories', 'monthly'] as $method) {
         $metrics->shouldReceive($method)->once()->andReturn([]);
     }
-    expect(fn () => (new TicketMetricsReport($metrics))->build(TicketMetricsFilters::fromValidated([])))->toThrow(LogicException::class);
+    expect(fn () => (new TicketMetricsReport($metrics, app(VehicleMetrics::class)))->build(TicketMetricsFilters::fromValidated([])))->toThrow(LogicException::class);
 });
 
 test('renders large category distributions across multiple valid PDF pages', function () {

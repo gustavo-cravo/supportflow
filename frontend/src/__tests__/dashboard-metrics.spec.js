@@ -207,6 +207,11 @@ async function render(component = MetricsDashboard) {
         routes: [
             { path: '/', component: DashboardView },
             { path: '/atendimentos/:id', component: { template: '<div>Detalhes</div>' } },
+            {
+                path: '/veiculos/:id/historico',
+                name: 'vehicle-history',
+                component: { template: '<div>Histórico</div>' },
+            },
             { path: '/:pathMatch(.*)*', component: { template: '<div>Destino</div>' } },
         ],
     })
@@ -226,6 +231,198 @@ const click = async (name) => {
     await wrapper.get(`[aria-label="${name}"]`).trigger('click')
     await flushPromises()
 }
+
+describe('Vehicle statistics and exports', () => {
+    const brand = { brand_id: 12, brand_name: 'Marca Alfa', total: 2, vehicles: 1, percentage: 100 }
+    const model = {
+        ...brand,
+        model_key: 'group-key',
+        model_description: 'Série LX',
+        vehicle_line: 'light',
+    }
+    const car = { ...model, vehicle_id: 19, plate: 'HFS4456' }
+    const subcategory = {
+        ...model,
+        system_id: 1,
+        system_name: 'Indicar',
+        problem_category_id: 5,
+        category_name: 'Falha de acesso',
+        problem_subcategory_id: 8,
+        subcategory_name: 'Credenciais',
+        level: 'subcategory',
+        total: 1,
+    }
+    const stats = {
+        summary: {
+            with_vehicle: 2,
+            without_vehicle: 1,
+            identification_percentage: 66.67,
+            distinct_vehicles: 1,
+            distinct_models: 1,
+            vehicles_without_model: 0,
+            light_tickets: 2,
+            heavy_tickets: 0,
+        },
+        recurrence: { repeat_vehicles: 1, repeat_tickets: 2, max_tickets_per_vehicle: 2 },
+        lines: [
+            { vehicle_line: 'light', total: 2, vehicles: 1, percentage: 100 },
+            { vehicle_line: 'heavy', total: 0, vehicles: 0, percentage: 0 },
+        ],
+        brands: [brand],
+        models: [model],
+        vehicles: [car],
+        problems: { brand: [subcategory], model: [subcategory], line: [subcategory] },
+    }
+    const toggle = async (selector, open = true) => {
+        const details = wrapper.get(selector)
+        details.element.open = open
+        await details.trigger('toggle')
+        await flushPromises()
+    }
+    const openReport = async () => {
+        await wrapper
+            .findAll('button')
+            .find((button) => button.text() === 'Exportar relatório')
+            .trigger('click')
+        await flushPromises()
+        return wrapper.getComponent(MetricsExportModal)
+    }
+
+    it('combines the draft filters and clears only vehicle criteria while disabling contradictory inputs', async () => {
+        data.vehicles = stats
+        intercept = (endpoint) =>
+            endpoint === 'vehicle-brands' ? response([{ id: 12, name: 'Marca Alfa' }]) : undefined
+        await render()
+        expect(wrapper.get('.metrics-vehicle-filters').element.open).toBe(false)
+        await toggle('.metrics-vehicle-filters')
+        await wrapper.get('#metrics-status').setValue('closed')
+        await wrapper.get('#filter-vehicle_plate').setValue('hfs-44')
+        await wrapper.get('#filter-vehicle_model').setValue('Série')
+        await wrapper.get('#filter-vehicle_line').setValue('light')
+        await wrapper.get('#filter-vehicle_brand_id').trigger('click')
+        await flushPromises()
+        await wrapper.get('[role="option"] button').trigger('click')
+        await apply()
+        expect(metricsCalls().at(-1)[1]).toMatchObject({
+            status: 'closed',
+            vehicle_plate: 'hfs-44',
+            vehicle_model: 'Série',
+            vehicle_line: 'light',
+            vehicle_brand_id: 12,
+        })
+        await toggle('.metrics-vehicle-filters', false)
+        expect(wrapper.get('.metrics-vehicle-filters summary').text()).toContain('4 ativos')
+        await toggle('.metrics-vehicle-filters')
+        await wrapper.get('#filter-vehicle_presence').setValue('without')
+        expect(wrapper.get('#filter-vehicle_plate').element.disabled).toBe(true)
+        expect(wrapper.get('#filter-vehicle_brand_id').element.disabled).toBe(true)
+        await apply()
+        expect(metricsCalls().at(-1)[1]).toEqual({
+            ...base,
+            status: 'closed',
+            vehicle_presence: 'without',
+        })
+        await wrapper
+            .findAll('button')
+            .find((button) => button.text() === 'Limpar filtros veiculares')
+            .trigger('click')
+        expect(metricsCalls().at(-1)[1]).toEqual({ ...base, status: 'closed' })
+    })
+
+    it('loads vehicle statistics on expansion and uses existing paginated details for exact groups', async () => {
+        data.vehicles = stats
+        await render()
+        expect(metricsCalls('vehicles')).toHaveLength(0)
+        await wrapper.get('#metrics-status').setValue('closed')
+        await apply()
+        const selector = '.metrics-vehicle-section'
+        expect(wrapper.get(selector).element.open).toBe(false)
+        await toggle(selector)
+        expect(metricsCalls('vehicles').at(-1)[1]).toMatchObject({ status: 'closed' })
+        expect(wrapper.get(selector).text()).toContain(
+            '66,67%',
+            'Atendimentos sem veículo',
+            'Recorrência por placa',
+        )
+        expect(wrapper.get('a[href="/veiculos/19/historico"]').text()).toBe('Histórico veicular')
+        await toggle(selector, false)
+        await toggle(selector)
+        expect(metricsCalls('vehicles')).toHaveLength(1)
+        await wrapper.get('#metrics-vehicle-dimension').setValue('model')
+        const problem = wrapper.get('section[aria-label="Problemas recorrentes"]')
+        expect(problem.text()).toContain(
+            'Cada vínculo com uma subcategoria conta uma ocorrência',
+            'Credenciais',
+        )
+        await problem.get('tbody button').trigger('click')
+        await flushPromises()
+        expect(metricsCalls('tickets').at(-1)[1]).toMatchObject({
+            status: 'closed',
+            system_id: 1,
+            vehicle_brand_id: 12,
+            group_vehicle_model: 'group-key',
+            problem_category_id: 5,
+            problem_subcategory_id: 8,
+            page: 1,
+            per_page: 15,
+        })
+        expect(wrapper.getComponent(MetricsTicketsModal).text()).toContain('Erro de acesso')
+    })
+
+    it('shows empty and retry states without blocking the traditional metrics', async () => {
+        data.vehicles = {
+            ...stats,
+            summary: { ...stats.summary, with_vehicle: 0, without_vehicle: 3 },
+        }
+        intercept = (endpoint) =>
+            endpoint === 'metrics/vehicles' ? Promise.reject(new ApiError(0)) : undefined
+        await render()
+        await toggle('.metrics-vehicle-section')
+        expect(wrapper.get('.metrics-vehicle-section [role="alert"]').text()).toContain(
+            'Não foi possível',
+        )
+        expect(wrapper.text()).toContain('Categorias mais recorrentes')
+        intercept = null
+        await wrapper.get('.metrics-vehicle-section .state-panel button').trigger('click')
+        await flushPromises()
+        expect(wrapper.get('.metrics-vehicle-section').text()).toContain(
+            'Nenhum atendimento com veículo',
+        )
+    })
+
+    it('sends both formats with an optional flag independent from the section and masks the plate in the preview', async () => {
+        const download = vi
+            .spyOn(api, 'download')
+            .mockResolvedValue({ filename: 'relatorio.pdf', blob: new Blob(['bytes']) })
+        vi.spyOn(downloads, 'saveDownload').mockImplementation(() => {})
+        await render()
+        await toggle('.metrics-vehicle-filters')
+        await wrapper.get('#filter-vehicle_plate').setValue('HFS4456')
+        await apply()
+        let modal = await openReport()
+        expect(modal.text()).toContain('Filtro de placa aplicado')
+        expect(modal.text()).not.toContain('HFS4456')
+        expect(modal.get('[type="checkbox"]').element.checked).toBe(false)
+        await modal.get('form').trigger('submit')
+        await flushPromises()
+        expect(download.mock.calls[0][1]).toEqual({
+            ...base,
+            format: 'pdf',
+            vehicle_plate: 'HFS4456',
+        })
+        modal = await openReport()
+        await modal.get('#metrics-export-format').setValue('xlsx')
+        await modal.get('[type="checkbox"]').setValue(true)
+        await modal.get('form').trigger('submit')
+        expect(download.mock.calls[1][1]).toEqual({
+            ...base,
+            format: 'xlsx',
+            vehicle_plate: 'HFS4456',
+            include_vehicle_statistics: 1,
+        })
+        expect(metricsCalls('vehicles')).toHaveLength(0)
+    })
+})
 
 describe('Dashboard tabs and preservation', () => {
     it('starts in operational overview without requesting any metrics or catalog', async () => {

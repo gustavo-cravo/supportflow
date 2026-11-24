@@ -14,6 +14,7 @@ class SupportTicketRequest extends ApiRequest
             'system_id' => [...$this->presence(), 'integer', 'exists:systems,id'],
             'contact_id' => [...$this->presence(), 'integer', 'exists:contacts,id'],
             'customer_id' => ['nullable', 'integer', 'exists:customers,id'],
+            'vehicle_id' => ['bail', 'sometimes', 'nullable', 'integer:strict', 'exists:vehicles,id'],
             'previous_ticket_id' => ['nullable', 'integer', 'exists:support_tickets,id'],
             'problem_category_id' => ['nullable', 'integer', 'exists:problem_categories,id'],
             'problem_subcategory_id' => ['nullable', 'integer', 'exists:problem_subcategories,id'],
