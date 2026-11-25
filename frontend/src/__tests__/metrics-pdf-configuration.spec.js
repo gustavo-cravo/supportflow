@@ -670,7 +670,7 @@ it('opens from Metrics with the applied filters and restores focus on Escape whi
     await wrapper.get('form[aria-label="Filtros estatísticos"]').trigger('submit')
     await flushPromises()
     await wrapper.get('#metrics-period').setValue('this_month')
-    const open = button('Exportar PDF')
+    const open = button('Exportar PDF estatístico')
     open.element.focus()
     await open.trigger('click')
     await flushPromises()
@@ -690,7 +690,7 @@ it('opens from Metrics with the applied filters and restores focus on Escape whi
 
 it('drops the preview and any pending file when new dashboard filters are applied', async () => {
     await mountMetrics()
-    await button('Exportar PDF').trigger('click')
+    await button('Exportar PDF estatístico').trigger('click')
     await flushPromises()
     await sectionCheckbox('summary').setValue(true)
     await openPreview()
@@ -702,7 +702,7 @@ it('drops the preview and any pending file when new dashboard filters are applie
     expect(releaseUrl).toHaveBeenCalledWith('blob:preview')
     expect(wrapper.findComponent(MetricsPdfConfigurationModal).exists()).toBe(false)
 
-    await button('Exportar PDF').trigger('click')
+    await button('Exportar PDF estatístico').trigger('click')
     await flushPromises()
     expect(sectionCheckbox('summary').element.checked).toBe(false)
     await sectionCheckbox('summary').setValue(true)

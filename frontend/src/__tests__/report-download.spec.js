@@ -199,6 +199,65 @@ describe('binary API downloads', () => {
             message: expect.stringContaining('tempo limite'),
         })
     })
+
+    it('posts the analytical configuration and returns the original binary with the actual selection count', async () => {
+        const payload = {
+            period: 'all',
+            configuration: { selection: { mode: 'only', ids: [42] } },
+        }
+        const response = fileResponse('application/pdf', 'pdf')
+        const blob = new BinaryBlob(['%PDF-1.7\nconteúdo analítico\n%%EOF\n'], {
+            type: 'application/pdf',
+        })
+        response.blob = async () => blob
+        response.headers.set('X-Report-Selected-Count', '1')
+        const filename = 'supportflow-relatorio-analitico-2026-11-25.pdf'
+        response.headers.set('Content-Disposition', `inline; filename="${filename}"`)
+        const fetcher = vi.fn().mockResolvedValue(response)
+        vi.stubGlobal('fetch', fetcher)
+
+        expect(await api.exportAnalyticalPdf(payload, 'inline')).toEqual({
+            blob,
+            filename,
+            selectedCount: 1,
+        })
+        expect(fetcher).toHaveBeenCalledExactlyOnceWith(
+            '/api/metrics/analytical-report/pdf?disposition=inline',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify(payload),
+            }),
+        )
+        response.headers.set('Content-Disposition', 'attachment; filename="../../individual.pdf"')
+        expect((await api.exportAnalyticalPdf(payload, 'attachment')).filename).toBe(
+            'supportflow-relatorio-analitico.pdf',
+        )
+    })
+
+    it('rejects missing count, wrong MIME and corrupt analytical content and decodes JSON field errors', async () => {
+        const response = fileResponse('application/pdf', 'pdf')
+        response.blob = async () => new BinaryBlob(['%PDF-1.7\nvalid\n%%EOF'])
+        const fetcher = vi.fn().mockResolvedValue(response)
+        vi.stubGlobal('fetch', fetcher)
+        await expect(api.exportAnalyticalPdf({}, 'inline')).rejects.toMatchObject({ status: 502 })
+        response.headers.set('X-Report-Selected-Count', '2')
+        response.headers.set('Content-Type', 'text/html')
+        await expect(api.exportAnalyticalPdf({}, 'inline')).rejects.toMatchObject({ status: 502 })
+        response.headers.set('Content-Type', 'application/pdf')
+        response.blob = async () => new BinaryBlob(['%PDF-1.7\nincomplete'])
+        await expect(api.exportAnalyticalPdf({}, 'inline')).rejects.toMatchObject({ status: 502 })
+        fetcher.mockResolvedValueOnce({
+            ok: false,
+            status: 422,
+            json: async () => ({
+                errors: { 'configuration.grouping': ['Agrupamento inválido.'] },
+            }),
+        })
+        await expect(api.exportAnalyticalPdf({}, 'attachment')).rejects.toMatchObject({
+            status: 422,
+            errors: { 'configuration.grouping': ['Agrupamento inválido.'] },
+        })
+    })
 })
 
 it('initiates a browser download and then removes the link and releases the object URL', async () => {

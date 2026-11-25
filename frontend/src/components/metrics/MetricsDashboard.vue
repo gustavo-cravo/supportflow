@@ -18,6 +18,7 @@ import MetricsMonthlyChart from './MetricsMonthlyChart.vue'
 import MetricsTicketsModal from './MetricsTicketsModal.vue'
 import MetricsExportModal from './MetricsExportModal.vue'
 import MetricsPdfConfigurationModal from './MetricsPdfConfigurationModal.vue'
+import MetricsAnalyticalReportModal from './MetricsAnalyticalReportModal.vue'
 import VehicleMetricsSection from './VehicleMetricsSection.vue'
 import './metrics.css'
 const applied = ref(metricParams(defaultMetricFilters()))
@@ -31,6 +32,19 @@ const exportOpen = ref(false),
     catalog = ref({})
 const pdfScope = shallowRef(null)
 const pdfDraft = ref(null)
+const analyticalScope = shallowRef(null)
+const analyticalDraft = ref(null)
+const analyticalScopeChanged = computed(() => {
+    const scope = analyticalScope.value
+    if (!scope) return false
+    return (
+        JSON.stringify(scope.filters) !== JSON.stringify(applied.value) ||
+        (!!result.value &&
+            ['date_from', 'date_to'].some(
+                (date) => result.value.filters[date] !== scope.resolvedFilters[date],
+            ))
+    )
+})
 const exportCriteria = computed(() =>
     result.value ? describeMetricFilters(applied.value, result.value.filters, catalog.value) : [],
 )
@@ -105,10 +119,17 @@ function closePdfConfiguration() {
 }
 function openPdfConfiguration() {
     if (!result.value) return
-    pdfScope.value = {
-        filters: { ...applied.value },
-        resolvedFilters: { ...result.value.filters },
-    }
+    pdfScope.value = captureReportScope()
+}
+function captureReportScope() {
+    return { filters: { ...applied.value }, resolvedFilters: { ...result.value.filters } }
+}
+function openAnalyticalReport() {
+    if (result.value) analyticalScope.value = captureReportScope()
+}
+function closeAnalyticalReport() {
+    analyticalScope.value = null
+    analyticalDraft.value = null
 }
 function openTickets(row, isSubcategory = false) {
     drilldown.value = {
@@ -148,7 +169,15 @@ onBeforeUnmount(() => controller?.abort())
                     :disabled="loading || !!error || !result"
                     @click="openPdfConfiguration"
                 >
-                    <AppIcon name="download" :size="16" />Exportar PDF
+                    <AppIcon name="download" :size="16" />Exportar PDF estatístico
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    :disabled="loading || !!error || !result"
+                    @click="openAnalyticalReport"
+                >
+                    <AppIcon name="tickets" :size="16" />Relatório analítico (PDF)
                 </button>
             </div>
         </PageHeading>
@@ -370,6 +399,15 @@ onBeforeUnmount(() => controller?.abort())
             :resolved-filters="pdfScope.resolvedFilters"
             :filter-catalog="catalog"
             @close="closePdfConfiguration"
+        />
+        <MetricsAnalyticalReportModal
+            v-if="analyticalScope"
+            v-model:draft="analyticalDraft"
+            :filters="analyticalScope.filters"
+            :resolved-filters="analyticalScope.resolvedFilters"
+            :filter-catalog="catalog"
+            :scope-changed="analyticalScopeChanged"
+            @close="closeAnalyticalReport"
         />
     </div>
 </template>

@@ -7,7 +7,7 @@ O Dashboard oferece o PDF gerencial personalizável e a planilha analítica. O G
 ## Como utilizar
 
 1. Abra **Dashboard → Métricas** e aplique os filtros desejados.
-2. Clique em **Exportar PDF** para personalizar seções, indicadores, formatos, agrupamentos e título. Confira o recorte em **Filtros aplicados**.
+2. Clique em **Exportar PDF estatístico** para personalizar seções, indicadores, formatos, agrupamentos e título. Confira o recorte em **Filtros aplicados**.
 3. Use **Exportar PDF** no modal para baixar diretamente ou **Pré-visualizar** para conferir as páginas. Na pré-visualização, **Baixar PDF** salva o arquivo exibido e **Voltar à configuração** preserva todas as escolhas.
 4. Para a planilha, clique em **Exportar Excel**, escolha se quer **Incluir estatísticas veiculares** e clique em **Gerar relatório**.
 
@@ -146,7 +146,7 @@ O título automático também pode ser usado com uma única seleção.
 
 ## Modal de personalização do PDF (Etapa 2/5)
 
-Em **Dashboard → Métricas**, aplique o recorte desejado e clique em **Exportar PDF**. O modal oferece [pré-visualização e exportação direta](#pré-visualização-e-download-etapa-45).
+Em **Dashboard → Métricas**, aplique o recorte desejado e clique em **Exportar PDF estatístico**. O modal oferece [pré-visualização e exportação direta](#pré-visualização-e-download-etapa-45).
 
 `MetricsDashboard.vue` é dono do rascunho temporário, entregue ao modal por `v-model:draft`. O rascunho pode ser reutilizado se o diálogo for remontado dentro da mesma sessão. Cancelar, usar o botão de fechar, pressionar ESC, clicar no fundo ou aplicar outro recorte encerra a sessão. O modal aborta requisições pendentes ao sair. Estados de expansão e exibição das opções avançadas são locais ao modal.
 
@@ -174,11 +174,11 @@ O objeto enviado pelo modal usa o contrato da Etapa 1 com as seções, indicador
 
 ### Validação manual
 
-1. Abra **Exportar PDF**, expanda duas seções e marque apenas um indicador. Verifique o estado parcial, o contador e o resumo.
+1. Abra **Exportar PDF estatístico**, expanda duas seções e marque apenas um indicador. Verifique o estado parcial, o contador e o resumo.
 2. Abra as opções visuais avançadas, escolha um formato e recolha a seção. Reabra para conferir a escolha. Use **Restaurar formatos automáticos** e confira que o indicador continua marcado.
 3. Selecione um agrupamento principal e uma dimensão adicional. Edite o título, altere uma seção e confira que o título personalizado persiste. Restaure o título automático.
 4. Envie um subtítulo com HTML, confira o erro no campo, corrija e gere novamente. Em tela estreita, confira a rolagem interna e as ações no rodapé.
-5. Feche com ESC e confira o retorno do foco a **Exportar PDF**. Use **Exportar Excel** para conferir o fluxo da planilha.
+5. Feche com ESC e confira o retorno do foco a **Exportar PDF estatístico**. Use **Exportar Excel** para conferir o fluxo da planilha.
 
 ## Gerador configurável de PDF (Etapa 3/5)
 
