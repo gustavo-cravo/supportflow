@@ -4,6 +4,8 @@
 
 As métricas veiculares usam `GET /api/metrics/vehicles` e os mesmos critérios dos outros endpoints de métricas. A exportação aceita a inclusão opcional das seções veiculares. [Consultas e detalhamento](ticket-metrics.md#parâmetros-veiculares) · [Exportações](statistical-reports.md#endpoint-e-parâmetros).
 
+O relatório analítico oferece catálogo, listagem de elegíveis, validação e emissão em PDF sob `/api/metrics/analytical-report`. [Contrato do relatório analítico](analytical-ticket-report.md) · [Auditoria final](analytical-ticket-report-audit.md).
+
 ## Resumo do dashboard — etapa 3
 
 `GET /api/dashboard/summary` retorna HTTP 200 com `data` contendo:

@@ -2,19 +2,28 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 import AppIcon from '@/components/AppIcon.vue'
 
-const props = defineProps({ file: { type: Object, required: true } })
+const props = defineProps({ file: { type: Object, required: true }, showLoading: Boolean })
 const url = ref('')
 const inline = ref(navigator.pdfViewerEnabled !== false)
+const loading = ref(true)
+const slow = ref(false)
 let openedInTab = false
+let loadingDeadline
 
 onMounted(() => {
     try {
         url.value = URL.createObjectURL(props.file.blob)
+        if (props.showLoading && inline.value) {
+            loadingDeadline = setTimeout(() => {
+                if (loading.value) slow.value = true
+            }, 5000)
+        }
     } catch {
         inline.value = false
     }
 })
 onUnmounted(() => {
+    clearTimeout(loadingDeadline)
     if (!url.value) return
     const objectUrl = url.value
     // Give a new tab time to consume its navigation before releasing the URL.
@@ -25,6 +34,13 @@ onUnmounted(() => {
 
 <template>
     <div class="metrics-pdf-preview">
+        <p v-if="showLoading && url && inline && loading" class="muted" role="status">
+            <template v-if="slow">O visualizador ainda não respondeu.</template>
+            <template v-else>
+                <span class="spinner spinner-small" aria-hidden="true"></span> Carregando
+                visualização…
+            </template>
+        </p>
         <p v-if="!inline" class="alert alert-info" role="status">
             {{
                 url
@@ -52,6 +68,7 @@ onUnmounted(() => {
             :src="url"
             title="Páginas do relatório PDF"
             tabindex="0"
+            @load="loading = false"
             @error="inline = false"
         ></iframe>
     </div>

@@ -13,7 +13,7 @@ As métricas são carregadas apenas no primeiro acesso à nova aba. Alternar ent
 5. O modal possui paginação de 15 registros e links para os detalhes. Feche pelo botão, ESC ou fundo para voltar à análise com os mesmos filtros.
 6. **Redefinir filtros** aplica novamente os últimos seis meses, todos os sistemas/status e todas as classificações.
 
-**Exportar PDF** abre o modal de personalização, com pré-visualização opcional e download direto. **Exportar Excel** abre a emissão da planilha com os filtros aplicados. Consulte o fluxo e o contrato na [documentação de relatórios estatísticos](statistical-reports.md#pré-visualização-e-download-etapa-45).
+**Exportar PDF estatístico** abre o modal de personalização, com pré-visualização opcional e download direto. **Exportar Excel** abre a emissão da planilha com os filtros aplicados. **Relatório analítico (PDF)** abre a configuração e validação da seleção de atendimentos. [Relatórios estatísticos](statistical-reports.md#pré-visualização-e-download-etapa-45) · [Relatório analítico](analytical-ticket-report.md).
 
 ## Filtros e dados históricos
 
@@ -81,4 +81,4 @@ Criados:
 - Comparação antes/depois da navegação e das consultas: 11 tabelas funcionais, 132 registros da base isolada, sem alterações. Console do navegador sem erros ou avisos.
 - `git diff --check`: aprovado.
 
-Os botões **Exportar PDF** e **Exportar Excel** utilizam os filtros aplicados na aba. O PDF abre o modal de personalização com pré-visualização opcional. O [guia de exportação](statistical-reports.md) descreve os fluxos e formatos, e a [auditoria final do PDF gerencial](statistical-reports-validation.md) registra os testes, os resultados e os cenários de paginação.
+Os relatórios utilizam os filtros aplicados na aba. O [guia de exportação](statistical-reports.md) descreve os fluxos estatísticos, e a [auditoria final do PDF gerencial](statistical-reports-validation.md) registra os testes e cenários de paginação.

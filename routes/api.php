@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Api\AnalyticalTicketReportController;
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
@@ -24,6 +25,13 @@ Route::get('metrics/export', ExportTicketMetricsController::class)->name('metric
 Route::post('metrics/export/pdf', ExportConfiguredTicketMetricsPdfController::class)->name('metrics.export.pdf');
 Route::get('metrics/export/pdf/configuration', [TicketMetricsPdfConfigurationController::class, 'catalog'])->name('metrics.export.pdf.configuration.catalog');
 Route::post('metrics/export/pdf/configuration', [TicketMetricsPdfConfigurationController::class, 'validateConfiguration'])->name('metrics.export.pdf.configuration.validate');
+
+Route::prefix('metrics/analytical-report')->name('metrics.analytical-report.')->controller(AnalyticalTicketReportController::class)->group(function () {
+    Route::get('configuration', 'catalog')->name('configuration.catalog');
+    Route::post('configuration', 'validateConfiguration')->name('configuration.validate');
+    Route::get('tickets', 'tickets')->name('tickets');
+    Route::post('pdf', 'pdf')->name('pdf');
+});
 
 Route::prefix('metrics')->name('metrics.')->controller(TicketMetricsController::class)->group(function () {
     Route::get('summary', 'summary')->name('summary');

@@ -79,6 +79,13 @@ export async function request(
                 suggested && pattern.test(suggested) && suggested.endsWith('.' + extension)
                     ? suggested
                     : (downloadPolicy?.fallbackFilename ?? 'supportflow_relatorio.' + extension)
+            if (downloadPolicy?.selectedCountHeader) {
+                const value = response.headers.get(downloadPolicy.selectedCountHeader)
+                const selectedCount = Number(value)
+                if (!/^[1-9]\d*$/.test(value ?? '') || !Number.isSafeInteger(selectedCount))
+                    throw new Error('Invalid report count')
+                return { blob, filename, selectedCount }
+            }
             return { blob, filename }
         } catch (error) {
             if (signal?.aborted) throw error
@@ -108,6 +115,21 @@ export const api = {
             signal,
             responseType: 'blob',
             downloadPolicy: { contentType: 'application/pdf', validatePdf: true },
+        }),
+    exportAnalyticalPdf: (data, disposition, signal) =>
+        request('metrics/analytical-report/pdf', {
+            method: 'POST',
+            data,
+            params: { disposition },
+            signal,
+            responseType: 'blob',
+            downloadPolicy: {
+                contentType: 'application/pdf',
+                validatePdf: true,
+                filenamePattern: /^supportflow-relatorio-analitico-\d{4}-\d{2}-\d{2}\.pdf$/,
+                fallbackFilename: 'supportflow-relatorio-analitico.pdf',
+                selectedCountHeader: 'X-Report-Selected-Count',
+            },
         }),
     downloadTicketPdf: (id, data, signal) => {
         const number = String(id).padStart(4, '0')
