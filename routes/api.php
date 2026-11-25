@@ -3,6 +3,7 @@
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExportConfiguredTicketMetricsPdfController;
 use App\Http\Controllers\Api\ExportSupportTicketPdfController;
 use App\Http\Controllers\Api\ExportTicketMetricsController;
 use App\Http\Controllers\Api\KnowledgeArticleController;
@@ -13,12 +14,16 @@ use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\SupportTicketController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\TicketMetricsController;
+use App\Http\Controllers\Api\TicketMetricsPdfConfigurationController;
 use App\Http\Controllers\Api\VehicleBrandController;
 use App\Http\Controllers\Api\VehicleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('dashboard/summary', [DashboardController::class, 'summary'])->name('dashboard.summary');
 Route::get('metrics/export', ExportTicketMetricsController::class)->name('metrics.export');
+Route::post('metrics/export/pdf', ExportConfiguredTicketMetricsPdfController::class)->name('metrics.export.pdf');
+Route::get('metrics/export/pdf/configuration', [TicketMetricsPdfConfigurationController::class, 'catalog'])->name('metrics.export.pdf.configuration.catalog');
+Route::post('metrics/export/pdf/configuration', [TicketMetricsPdfConfigurationController::class, 'validateConfiguration'])->name('metrics.export.pdf.configuration.validate');
 
 Route::prefix('metrics')->name('metrics.')->controller(TicketMetricsController::class)->group(function () {
     Route::get('summary', 'summary')->name('summary');

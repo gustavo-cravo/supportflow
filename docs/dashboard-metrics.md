@@ -13,6 +13,8 @@ As métricas são carregadas apenas no primeiro acesso à nova aba. Alternar ent
 5. O modal possui paginação de 15 registros e links para os detalhes. Feche pelo botão, ESC ou fundo para voltar à análise com os mesmos filtros.
 6. **Redefinir filtros** aplica novamente os últimos seis meses, todos os sistemas/status e todas as classificações.
 
+**Exportar PDF** abre o modal de personalização, com pré-visualização opcional e download direto. **Exportar Excel** abre a emissão da planilha com os filtros aplicados. Consulte o fluxo e o contrato na [documentação de relatórios estatísticos](statistical-reports.md#pré-visualização-e-download-etapa-45).
+
 ## Filtros e dados históricos
 
 Os sete períodos, os status individuais e os parâmetros são os existentes no backend, documentados em [ticket-metrics.md](ticket-metrics.md). O padrão é `last_6_months`. Datas personalizadas são enviadas como `date_from`/`date_to`, inclusivas, no horário de Brasília. Datas não são enviadas para períodos relativos. O frontend não calcula limites dos períodos.
@@ -23,7 +25,7 @@ Mudar sistema ou categoria redefine escolhas dependentes incompatíveis. A mudan
 
 ## API utilizada
 
-Todas as requisições passam por `services/api.js` e são somente GET. Nenhum endpoint, cálculo, migration ou regra de gravação foi alterado nesta etapa.
+Todas as requisições passam por `services/api.js`. As consultas estatísticas abaixo usam GET. O modal de personalização usa GET para carregar o catálogo e POST para validar e gerar o PDF.
 
 | Endpoint                     | Utilização                                                   |
 | ---------------------------- | ------------------------------------------------------------ |
@@ -79,4 +81,4 @@ Criados:
 - Comparação antes/depois da navegação e das consultas: 11 tabelas funcionais, 132 registros da base isolada, sem alterações. Console do navegador sem erros ou avisos.
 - `git diff --check`: aprovado.
 
-A Etapa 5 acrescentou o botão **Exportar relatório** à aba, utilizando os filtros aplicados desta coordenação. O fluxo, os formatos, os arquivos e a validação da exportação estão documentados em [statistical-reports.md](statistical-reports.md). Os resultados de testes acima registram a entrega da Etapa 4; os resultados atuais estão na documentação da Etapa 5.
+Os botões **Exportar PDF** e **Exportar Excel** utilizam os filtros aplicados na aba. O PDF abre o modal de personalização com pré-visualização opcional. O [guia de exportação](statistical-reports.md) descreve os fluxos e formatos, e a [auditoria final do PDF gerencial](statistical-reports-validation.md) registra os testes, os resultados e os cenários de paginação.

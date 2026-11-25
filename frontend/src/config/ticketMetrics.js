@@ -1,4 +1,5 @@
 import { displayStatus } from '@/utils/format'
+import { vehicleLineLabel } from './vehicleCatalog'
 
 export const metricPeriods = [
     { value: 'this_month', label: 'Este mês' },
@@ -69,9 +70,18 @@ export function metricDrilldown(applied, row, subcategory = false) {
     return params
 }
 
-export function describeMetricFilters(applied, resolved, catalog) {
-    const label = (rows, id, fallback) =>
-        rows?.find((row) => row.id === Number(id))?.name || fallback
+export function metricFilterName(rows, id, fallback = '') {
+    return (id && rows?.find((row) => row.id === Number(id))?.name) || fallback
+}
+
+export function metricLabelWithoutPlate(label, plate) {
+    if (!label || !plate) return label
+    const compact = (text) => text.replace(/[^\p{L}\p{N}]/gu, '').toUpperCase()
+    const filter = compact(plate)
+    return filter && compact(label).includes(filter) ? '' : label
+}
+
+export function describeMetricFilters(applied, resolved, catalog, vehicleDetails) {
     const period = metricPeriods.find((row) => row.value === applied.period)?.label
     const dates = resolved.date_from
         ? `${resolved.date_from.split('-').reverse().join('/')} a ${resolved.date_to.split('-').reverse().join('/')}`
@@ -85,12 +95,15 @@ export function describeMetricFilters(applied, resolved, catalog) {
         applied.vehicle_line === 'light' && 'Linha leve',
         applied.vehicle_line === 'heavy' && 'Linha pesada',
     ].filter(Boolean)
+    const plate = vehicleDetails && (resolved.vehicle_plate ?? applied.vehicle_plate)
+    const withoutPlate = (text) => metricLabelWithoutPlate(text, plate)
+    const named = (rows, id, fallback) => withoutPlate(metricFilterName(rows, id)) || fallback
     return [
         { label: 'Período', value: [period, dates].filter(Boolean).join(' · ') },
         {
             label: 'Sistema',
             value: applied.system_id
-                ? label(catalog.systems, applied.system_id, 'Sistema selecionado')
+                ? named(catalog.systems, applied.system_id, 'Sistema selecionado')
                 : 'Todos os sistemas',
         },
         {
@@ -108,7 +121,7 @@ export function describeMetricFilters(applied, resolved, catalog) {
                 applied.classification === 'unclassified'
                     ? 'Sem classificação'
                     : applied.problem_category_id
-                      ? label(
+                      ? named(
                             catalog.categories,
                             applied.problem_category_id,
                             'Categoria selecionada',
@@ -121,13 +134,37 @@ export function describeMetricFilters(applied, resolved, catalog) {
                 applied.classification === 'without_subcategory'
                     ? 'Sem subcategoria'
                     : applied.problem_subcategory_id
-                      ? label(
+                      ? named(
                             catalog.subcategories,
                             applied.problem_subcategory_id,
                             'Subcategoria selecionada',
                         )
                       : 'Todas as subcategorias aplicáveis',
         },
-        ...(vehicle.length ? [{ label: 'Filtros veiculares', value: vehicle.join(' · ') }] : []),
+        ...(vehicleDetails
+            ? [
+                  applied.vehicle_presence && {
+                      label: 'Identificação veicular',
+                      value: applied.vehicle_presence === 'with' ? 'Com veículo' : 'Sem veículo',
+                  },
+                  applied.vehicle_brand_id && {
+                      label: 'Marca',
+                      value: withoutPlate(vehicleDetails.brandName) || 'Marca selecionada',
+                  },
+                  applied.vehicle_model && {
+                      label: 'Modelo',
+                      value:
+                          withoutPlate(applied.vehicle_model) ||
+                          'Filtro de descrição do modelo aplicado',
+                  },
+                  applied.vehicle_line && {
+                      label: 'Linha veicular',
+                      value: vehicleLineLabel(applied.vehicle_line),
+                  },
+                  applied.vehicle_plate && { label: 'Placa', value: 'Filtro de placa aplicado' },
+              ].filter(Boolean)
+            : vehicle.length
+              ? [{ label: 'Filtros veiculares', value: vehicle.join(' · ') }]
+              : []),
     ]
 }

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { Blob as BinaryBlob } from 'node:buffer'
 import { api } from '../services/api'
 import { saveDownload } from '../utils/download'
 afterEach(() => {
@@ -130,6 +131,73 @@ describe('binary API downloads', () => {
         expect((await api.downloadTicketPdf(3, {})).filename).toBe(
             'supportflow-atendimento-0003-2026-11-24.pdf',
         )
+    })
+
+    it('posts the filters and configuration and accepts only a PDF with the safe report name', async () => {
+        const payload = {
+            period: 'all',
+            configuration: { sections: { summary: { enabled: true } } },
+        }
+        const response = fileResponse('application/pdf', 'pdf')
+        const pdf = new BinaryBlob(['%PDF-1.7\ncontent\n%%EOF\n'], { type: 'application/pdf' })
+        response.blob = async () => pdf
+        response.headers.set(
+            'Content-Disposition',
+            'inline; filename="supportflow_relatorio_2026-11-25.pdf"',
+        )
+        const fetcher = vi.fn().mockResolvedValue(response)
+        vi.stubGlobal('fetch', fetcher)
+        expect(await api.exportMetricsPdf(payload, 'inline')).toEqual({
+            blob: pdf,
+            filename: 'supportflow_relatorio_2026-11-25.pdf',
+        })
+        expect(fetcher).toHaveBeenCalledWith(
+            '/api/metrics/export/pdf?disposition=inline',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify(payload),
+                headers: {
+                    Accept: 'application/pdf, application/json',
+                    'Content-Type': 'application/json',
+                },
+            }),
+        )
+        response.headers.set('Content-Disposition', 'attachment; filename="../../HFS4456.pdf"')
+        expect((await api.exportMetricsPdf(payload, 'attachment')).filename).toBe(
+            'supportflow_relatorio.pdf',
+        )
+    })
+
+    it.each(['', '<html>error</html>', '%PDF-1.7\nincomplete'])(
+        'rejects empty or invalid configured PDF bodies even with a PDF MIME type',
+        async (body) => {
+            const response = fileResponse('application/pdf', 'pdf')
+            response.blob = async () => new BinaryBlob([body], { type: 'application/pdf' })
+            vi.stubGlobal('fetch', vi.fn().mockResolvedValue(response))
+            await expect(api.exportMetricsPdf({}, 'inline')).rejects.toMatchObject({ status: 502 })
+        },
+    )
+
+    it('reports the configured PDF timeout separately from a transport failure', async () => {
+        const deadline = new AbortController()
+        vi.spyOn(AbortSignal, 'timeout').mockReturnValue(deadline.signal)
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(
+                (_url, { signal }) =>
+                    new Promise((_resolve, reject) =>
+                        signal.addEventListener('abort', () => reject(signal.reason), {
+                            once: true,
+                        }),
+                    ),
+            ),
+        )
+        const result = api.exportMetricsPdf({}, 'inline')
+        deadline.abort()
+        await expect(result).rejects.toMatchObject({
+            status: 408,
+            message: expect.stringContaining('tempo limite'),
+        })
     })
 })
 
