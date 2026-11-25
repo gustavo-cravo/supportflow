@@ -12,6 +12,15 @@ class ExportTicketMetricsRequest extends TicketMetricsRequest
         return parent::rules() + [
             'format' => ['required', Rule::in(['pdf', 'xlsx'])],
             'include_vehicle_statistics' => ['sometimes', 'boolean'],
+            'configuration' => ['missing_if:format,pdf'],
+        ];
+    }
+
+    /** @return array<string, string> */
+    public function messages(): array
+    {
+        return parent::messages() + [
+            'configuration.missing_if' => 'Use a rota de exportação de PDF configurável para enviar as opções do relatório.',
         ];
     }
 

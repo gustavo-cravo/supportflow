@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, onBeforeUnmount, ref, shallowRef } from 'vue'
 import { api } from '@/services/api'
 import {
     defaultMetricFilters,
@@ -17,6 +17,7 @@ import MetricsSystemsChart from './MetricsSystemsChart.vue'
 import MetricsMonthlyChart from './MetricsMonthlyChart.vue'
 import MetricsTicketsModal from './MetricsTicketsModal.vue'
 import MetricsExportModal from './MetricsExportModal.vue'
+import MetricsPdfConfigurationModal from './MetricsPdfConfigurationModal.vue'
 import VehicleMetricsSection from './VehicleMetricsSection.vue'
 import './metrics.css'
 const applied = ref(metricParams(defaultMetricFilters()))
@@ -28,6 +29,8 @@ const selectedKey = ref(null),
     drilldown = ref(null)
 const exportOpen = ref(false),
     catalog = ref({})
+const pdfScope = shallowRef(null)
+const pdfDraft = ref(null)
 const exportCriteria = computed(() =>
     result.value ? describeMetricFilters(applied.value, result.value.filters, catalog.value) : [],
 )
@@ -67,6 +70,7 @@ async function load(params = applied.value) {
     fieldErrors.value = []
     drilldown.value = null
     exportOpen.value = false
+    closePdfConfiguration()
     try {
         const [summary, systems, categories, subcategories, monthly] = await Promise.all(
             ['summary', 'systems', 'categories', 'subcategories', 'monthly'].map((endpoint) =>
@@ -95,6 +99,17 @@ async function load(params = applied.value) {
         if (controller === active) loading.value = false
     }
 }
+function closePdfConfiguration() {
+    pdfScope.value = null
+    pdfDraft.value = null
+}
+function openPdfConfiguration() {
+    if (!result.value) return
+    pdfScope.value = {
+        filters: { ...applied.value },
+        resolvedFilters: { ...result.value.filters },
+    }
+}
 function openTickets(row, isSubcategory = false) {
     drilldown.value = {
         filters: metricDrilldown(applied.value, row, isSubcategory),
@@ -117,15 +132,26 @@ onBeforeUnmount(() => controller?.abort())
             title="Métricas dos atendimentos"
             description="Explore o histórico, identifique recorrências e acompanhe a evolução dos seus atendimentos."
             eyebrow="ANÁLISE ESTATÍSTICA"
-            ><button
-                type="button"
-                class="btn btn-secondary"
-                :disabled="loading || !!error || !result"
-                @click="exportOpen = true"
-            >
-                <AppIcon name="download" :size="16" />Exportar relatório
-            </button></PageHeading
         >
+            <div class="metrics-report-actions">
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    :disabled="loading || !!error || !result"
+                    @click="exportOpen = true"
+                >
+                    <AppIcon name="download" :size="16" />Exportar Excel
+                </button>
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    :disabled="loading || !!error || !result"
+                    @click="openPdfConfiguration"
+                >
+                    <AppIcon name="download" :size="16" />Exportar PDF
+                </button>
+            </div>
+        </PageHeading>
         <MetricsFilters :applied="applied" @apply="load" @catalog="catalog = $event" />
         <div :aria-busy="loading">
             <StatePanel v-if="loading || error" :loading="loading" :error="error" @retry="load()" />
@@ -337,5 +363,27 @@ onBeforeUnmount(() => controller?.abort())
             :criteria="exportCriteria"
             @close="exportOpen = false"
         />
+        <MetricsPdfConfigurationModal
+            v-if="pdfScope"
+            v-model:draft="pdfDraft"
+            :filters="pdfScope.filters"
+            :resolved-filters="pdfScope.resolvedFilters"
+            :filter-catalog="catalog"
+            @close="closePdfConfiguration"
+        />
     </div>
 </template>
+
+<style scoped>
+.metrics-report-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 9px;
+}
+@media (max-width: 730px) {
+    .metrics-report-actions {
+        justify-content: flex-start;
+    }
+}
+</style>

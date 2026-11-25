@@ -3,6 +3,8 @@
 use App\Http\Controllers\Api\ContactController;
 use App\Http\Controllers\Api\CustomerController;
 use App\Http\Controllers\Api\DashboardController;
+use App\Http\Controllers\Api\ExportConfiguredTicketMetricsPdfController;
+use App\Http\Controllers\Api\ExportSupportTicketPdfController;
 use App\Http\Controllers\Api\ExportTicketMetricsController;
 use App\Http\Controllers\Api\KnowledgeArticleController;
 use App\Http\Controllers\Api\PendingTaskController;
@@ -12,12 +14,16 @@ use App\Http\Controllers\Api\ReminderController;
 use App\Http\Controllers\Api\SupportTicketController;
 use App\Http\Controllers\Api\SystemController;
 use App\Http\Controllers\Api\TicketMetricsController;
+use App\Http\Controllers\Api\TicketMetricsPdfConfigurationController;
 use App\Http\Controllers\Api\VehicleBrandController;
 use App\Http\Controllers\Api\VehicleController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('dashboard/summary', [DashboardController::class, 'summary'])->name('dashboard.summary');
 Route::get('metrics/export', ExportTicketMetricsController::class)->name('metrics.export');
+Route::post('metrics/export/pdf', ExportConfiguredTicketMetricsPdfController::class)->name('metrics.export.pdf');
+Route::get('metrics/export/pdf/configuration', [TicketMetricsPdfConfigurationController::class, 'catalog'])->name('metrics.export.pdf.configuration.catalog');
+Route::post('metrics/export/pdf/configuration', [TicketMetricsPdfConfigurationController::class, 'validateConfiguration'])->name('metrics.export.pdf.configuration.validate');
 
 Route::prefix('metrics')->name('metrics.')->controller(TicketMetricsController::class)->group(function () {
     Route::get('summary', 'summary')->name('summary');
@@ -44,6 +50,7 @@ Route::apiResource('support-tickets', SupportTicketController::class)
     ->parameters(['support-tickets' => 'supportTicket'])->except('destroy');
 Route::patch('support-tickets/{supportTicket}/status', [SupportTicketController::class, 'status'])->name('support-tickets.status');
 Route::post('support-tickets/{supportTicket}/close', [SupportTicketController::class, 'close'])->name('support-tickets.close');
+Route::post('support-tickets/{supportTicket}/export/pdf', ExportSupportTicketPdfController::class)->name('support-tickets.export.pdf');
 Route::get('support-tickets/{supportTicket}/related', [SupportTicketController::class, 'related'])->name('support-tickets.related');
 Route::apiResource('pending-tasks', PendingTaskController::class)
     ->parameters(['pending-tasks' => 'pendingTask'])->except('destroy');

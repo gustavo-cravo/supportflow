@@ -11,8 +11,11 @@ use Illuminate\Support\Facades\DB;
 
 final class VehicleMetrics
 {
-    /** @return array<string, mixed> */
-    public function build(TicketMetricsFilters $filters, bool $includeVehicleRanking = true): array
+    /**
+     * @param  list<string>|null  $problemDimensions
+     * @return array<string, mixed>
+     */
+    public function build(TicketMetricsFilters $filters, bool $includeVehicleRanking = true, ?array $problemDimensions = null): array
     {
         $base = $filters->apply(DB::table('support_tickets'));
         $count = (clone $base)->count();
@@ -79,11 +82,8 @@ final class VehicleMetrics
             'lines' => $lines,
             'brands' => $brands,
             'models' => $models,
-            'problems' => [
-                'brand' => $this->problems($linked, $filters, 'brand', $modelKey),
-                'model' => $this->problems($linked, $filters, 'model', $modelKey),
-                'line' => $this->problems($linked, $filters, 'line', $modelKey),
-            ],
+            'problems' => collect($problemDimensions ?? ['brand', 'model', 'line'])
+                ->mapWithKeys(fn (string $dimension) => [$dimension => $this->problems($linked, $filters, $dimension, $modelKey)])->all(),
             ...($includeVehicleRanking ? ['vehicles' => $this->vehicles($vehicleCounts)] : []),
         ];
     }

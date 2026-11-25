@@ -10,8 +10,7 @@ const props = defineProps({
     criteria: { type: Array, required: true },
 })
 const emit = defineEmits(['close'])
-const format = ref('pdf'),
-    includeVehicles = ref(false),
+const includeVehicles = ref(false),
     busy = ref(false),
     error = ref(''),
     errors = ref([])
@@ -28,7 +27,7 @@ async function generate() {
             'metrics/export',
             {
                 ...props.filters,
-                format: format.value,
+                format: 'xlsx',
                 ...(includeVehicles.value ? { include_vehicle_statistics: 1 } : {}),
             },
             active.signal,
@@ -56,7 +55,7 @@ function cancel() {
 onBeforeUnmount(() => controller?.abort())
 </script>
 <template>
-    <AppModal title="Exportar relatório" @close="cancel">
+    <AppModal title="Exportar Excel" @close="cancel">
         <p class="form-intro">
             O relatório utiliza os filtros aplicados à análise e contém somente estatísticas
             consolidadas.
@@ -72,19 +71,6 @@ onBeforeUnmount(() => controller?.abort())
             </div>
         </dl>
         <form id="metrics-export-form" @submit.prevent="generate">
-            <div class="form-field">
-                <label for="metrics-export-format">Formato do relatório</label
-                ><select
-                    id="metrics-export-format"
-                    v-model="format"
-                    class="input"
-                    :disabled="busy"
-                    required
-                >
-                    <option value="pdf">PDF · Relatório gerencial</option>
-                    <option value="xlsx">Excel (.xlsx) · Tabelas estatísticas</option>
-                </select>
-            </div>
             <label class="metrics-export-option">
                 <input v-model="includeVehicles" type="checkbox" :disabled="busy" />
                 Incluir estatísticas veiculares

@@ -1,0 +1,24 @@
+{
+    "topicPattern": "^(?:erros?|falhas?) (?:de|na) indicacao(?: veicular| de veiculos?)?$",
+    "vehicleTopicPattern": "(?:veicular|veiculos?)$",
+    "labelPattern": "^[\\p{L}\\p{M} .&'’/–-]+$",
+    "replacements": {
+        "ã": "a",
+        "ç": "c",
+        "í": "i",
+        "á": "a",
+        "é": "e",
+        "ó": "o",
+        "ú": "u"
+    },
+    "rules": {
+        "vehicleIndication": "Relatório de erros de indicação veicular",
+        "indication": "Relatório de erros de indicação",
+        "modelOnly": "Relatório de problemas por modelo veicular",
+        "vehicleOnly": "Relatório de estatísticas veiculares",
+        "namedScope": "Relatório de atendimentos",
+        "summaryOnly": "Relatório de indicadores de atendimento"
+    },
+    "fallback": "Relatório estatístico de atendimentos",
+    "separator": " — "
+}

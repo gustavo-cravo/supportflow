@@ -282,7 +282,7 @@ describe('Vehicle statistics and exports', () => {
     const openReport = async () => {
         await wrapper
             .findAll('button')
-            .find((button) => button.text() === 'Exportar relatório')
+            .find((button) => button.text() === 'Exportar Excel')
             .trigger('click')
         await flushPromises()
         return wrapper.getComponent(MetricsExportModal)
@@ -390,10 +390,10 @@ describe('Vehicle statistics and exports', () => {
         )
     })
 
-    it('sends both formats with an optional flag independent from the section and masks the plate in the preview', async () => {
+    it('exports Excel with the optional vehicle flag and masks the plate in the filter summary', async () => {
         const download = vi
             .spyOn(api, 'download')
-            .mockResolvedValue({ filename: 'relatorio.pdf', blob: new Blob(['bytes']) })
+            .mockResolvedValue({ filename: 'relatorio.xlsx', blob: new Blob(['bytes']) })
         vi.spyOn(downloads, 'saveDownload').mockImplementation(() => {})
         await render()
         await toggle('.metrics-vehicle-filters')
@@ -407,11 +407,10 @@ describe('Vehicle statistics and exports', () => {
         await flushPromises()
         expect(download.mock.calls[0][1]).toEqual({
             ...base,
-            format: 'pdf',
+            format: 'xlsx',
             vehicle_plate: 'HFS4456',
         })
         modal = await openReport()
-        await modal.get('#metrics-export-format').setValue('xlsx')
         await modal.get('[type="checkbox"]').setValue(true)
         await modal.get('form').trigger('submit')
         expect(download.mock.calls[1][1]).toEqual({
@@ -911,19 +910,19 @@ describe('loading, empty and failure states', () => {
     })
 })
 
-describe('statistical report export', () => {
+describe('statistical Excel export', () => {
     let download, save
     beforeEach(() => {
         download = vi.spyOn(api, 'download').mockResolvedValue({
             blob: new Blob(['test']),
-            filename: 'supportflow_relatorio_2026-11-23.pdf',
+            filename: 'supportflow_relatorio_2026-11-23.xlsx',
         })
         save = vi.spyOn(downloads, 'saveDownload').mockImplementation(() => {})
     })
     const openExport = async () => {
         await wrapper
             .findAll('button')
-            .find((node) => node.text() === 'Exportar relatório')
+            .find((node) => node.text() === 'Exportar Excel')
             .trigger('click')
         await flushPromises()
     }
@@ -951,7 +950,6 @@ describe('statistical report export', () => {
         expect(modal.text()).toContain('Credenciais')
         expect(modal.text()).toContain('Encerrado')
         expect(download).not.toHaveBeenCalled()
-        await wrapper.get('#metrics-export-format').setValue('xlsx')
         await generate()
         expect(download).toHaveBeenCalledWith(
             'metrics/export',
@@ -974,7 +972,7 @@ describe('statistical report export', () => {
         expect(post).not.toHaveBeenCalled()
         expect(patch).not.toHaveBeenCalled()
     })
-    it('shows the resolved applied period and default PDF format and permits an empty report', async () => {
+    it('shows the resolved applied period and permits an empty Excel report', async () => {
         data.summary = { total: 0, closed: 0, not_closed: 0, systems_count: 0, unclassified: 0 }
         data.systems = []
         data.categories = []
@@ -983,17 +981,14 @@ describe('statistical report export', () => {
         await render()
         await openExport()
         expect(wrapper.getComponent(MetricsExportModal).text()).toContain('01/06/2026 a 23/11/2026')
-        expect(wrapper.get('#metrics-export-format').element.value).toBe('pdf')
         await generate()
-        expect(download.mock.calls[0][1]).toEqual({ ...base, format: 'pdf' })
+        expect(download.mock.calls[0][1]).toEqual({ ...base, format: 'xlsx' })
     })
     it('disables export while refreshing metrics and does not use a stale result', async () => {
         intercept = (endpoint) =>
             endpoint.startsWith('metrics/') ? new Promise(() => {}) : undefined
         await render()
-        const button = wrapper
-            .findAll('button')
-            .find((node) => node.text() === 'Exportar relatório')
+        const button = wrapper.findAll('button').find((node) => node.text() === 'Exportar Excel')
         expect(button.element.disabled).toBe(true)
         expect(download).not.toHaveBeenCalled()
     })
@@ -1001,9 +996,7 @@ describe('statistical report export', () => {
         await render()
         await wrapper.get('#metrics-status').setValue('waiting')
         await apply()
-        const trigger = wrapper
-            .findAll('button')
-            .find((node) => node.text() === 'Exportar relatório')
+        const trigger = wrapper.findAll('button').find((node) => node.text() === 'Exportar Excel')
         trigger.element.focus()
         await openExport()
         await wrapper.get('[role="dialog"]').trigger('keydown', { key: 'Escape' })
@@ -1020,10 +1013,15 @@ describe('statistical report export', () => {
         await generate()
         await generate()
         expect(download).toHaveBeenCalledTimes(1)
-        expect(wrapper.get('#metrics-export-format').element.disabled).toBe(true)
+        expect(wrapper.get('#metrics-export-form input[type="checkbox"]').element.disabled).toBe(
+            true,
+        )
         expect(save).not.toHaveBeenCalled()
         expect(useNotifications().notices.value).toHaveLength(0)
-        resolve({ blob: new Blob(['generated']), filename: 'supportflow_relatorio_2026-11-23.pdf' })
+        resolve({
+            blob: new Blob(['generated']),
+            filename: 'supportflow_relatorio_2026-11-23.xlsx',
+        })
         await flushPromises()
         expect(save).toHaveBeenCalledTimes(1)
         expect(useNotifications().notices.value[0].message).toContain('download foi iniciado')
@@ -1041,7 +1039,7 @@ describe('statistical report export', () => {
             .find((node) => node.text() === 'Cancelar')
             .trigger('click')
         expect(signal.aborted).toBe(true)
-        resolve({ blob: new Blob(['late']), filename: 'supportflow_relatorio_2026-11-23.pdf' })
+        resolve({ blob: new Blob(['late']), filename: 'supportflow_relatorio_2026-11-23.xlsx' })
         await flushPromises()
         expect(save).not.toHaveBeenCalled()
         expect(useNotifications().notices.value).toHaveLength(0)
@@ -1082,7 +1080,7 @@ describe('statistical report export', () => {
         expect(download.mock.calls[0][1]).toEqual({
             ...base,
             classification: 'unclassified',
-            format: 'pdf',
+            format: 'xlsx',
         })
         await wrapper.get('#metrics-category').setValue('5')
         await wrapper.get('#metrics-subcategory').setValue('without_subcategory')
@@ -1093,7 +1091,7 @@ describe('statistical report export', () => {
             ...base,
             problem_category_id: 5,
             classification: 'without_subcategory',
-            format: 'pdf',
+            format: 'xlsx',
         })
     })
 })
